@@ -1,0 +1,20 @@
+#!/Library/Frameworks/Python.framework/Versions/3.11/bin/python3.11
+# -*- coding: utf-8 -*-
+from machineroom.worker import internal_work
+"""
+
+DATAPATH_BASE = "...._file....locator"
+TEMP_FILE = "tmp.txt"
+TEMP_JS = "tmp.js"
+REMOTE_WS = "...remote_locator"
+RAM_GB_REQUIREMENT = 4
+PUB_KEY = "/Users/xxxx/.ssh/id_rsa.pub"
+LOCAL_KEY_HOLDER = "/Users/xxxx/.ssh"
+MY_KEY_FEATURE = "apple@dapdefi"
+HOME = "/root"
+DOCKER_COMPOSE_VERSION = "2.24.6"
+
+
+"""
+if __name__ == '__main__':
+    internal_work()
