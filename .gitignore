@@ -117,7 +117,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-machineroom/
 lib64/
 parts/
 sdist/
