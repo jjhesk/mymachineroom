@@ -42,16 +42,15 @@ on macosx
 ```
 #!/Library/Frameworks/Python.framework/Versions/3.11/bin/python3.11
 # -*- coding: utf-8 -*-
-import machineroom.const
 
-machineroom.const.DATAPATH_BASE = "...."
-machineroom.const.PUB_KEY = "...."
 
+# setup your desired configuration path in the local machine
+import machineroom.const.Config
+Config.DATAPATH_BASE = "...."
+Config.PUB_KEY = "...."
 
 
 from machineroom.worker import internal_work
-
-
 
 if __name__ == '__main__':
     internal_work()
