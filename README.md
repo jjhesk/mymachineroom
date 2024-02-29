@@ -42,8 +42,24 @@ on macosx
 ```
 #!/Library/Frameworks/Python.framework/Versions/3.11/bin/python3.11
 # -*- coding: utf-8 -*-
+import machineroom.const
+
+machineroom.const.DATAPATH_BASE = "...."
+machineroom.const.PUB_KEY = "...."
+
+
+
 from machineroom.worker import internal_work
-"""
+
+
+
+if __name__ == '__main__':
+    internal_work()
+
+
+```
+### The configurations are available as below
+
 
 DATAPATH_BASE = "...._file....locator"
 TEMP_FILE = "tmp.txt"
@@ -56,13 +72,6 @@ MY_KEY_FEATURE = "xxxx@xxxxx"
 REMOTE_HOME = "/root"
 DOCKER_COMPOSE_VERSION = "2.24.6"
 
-
-"""
-if __name__ == '__main__':
-    internal_work()
-
-
-```
 
 ## Usage
 
