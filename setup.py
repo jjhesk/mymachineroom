@@ -23,14 +23,33 @@ from setuptools import find_packages
 from setuptools import setup
 
 
-def find_version()->str:
+def find_version() -> str:
     f = codecs.open('version', 'r', 'utf-8-sig')
-    line = f.readline().strip()
+    new_ver = f.readline().strip()
     f.close()
-    return line
+    edit_at_line(new_ver)
+    return new_ver
 
 
-with open('README.md','r') as f:
+def edit_at_line(version: str):
+    file = 'machineroom/__init__.py'
+    lines = []
+    with open(file, "r") as f:
+        lines = f.readlines()
+        f.close()
+        o = 0
+        for h in lines:
+            if "__version__" in h:
+                lines[o] = f"__version__ = '{version}'"
+                break
+            o += 1
+    if len(lines) > 0:
+        with open(file, "w") as f:
+            f.write("".join(lines))
+            f.close()
+
+
+with open('README.md', 'r') as f:
     long_description = f.read()
 
 _dir = os.path.dirname(__file__)
@@ -64,7 +83,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-         #      'connect = mymachine.cmdbin:cli',
+            #      'connect = mymachine.cmdbin:cli',
         ],
     },
 )

@@ -32,14 +32,14 @@ pub_ver() {
   increment_version $VERSION >version
   VERSION=$(cat version)
 
-  python3 -m pip install --user --upgrade setuptools wheel
+  python3.11 -m pip install --user --upgrade setuptools wheel
   # python3 -m pip install --upgrade setuptools wheel
   # python3 -m readme_renderer README.rst -o ./html/README.html
   sudo python3 setup.py clean sdist bdist_wheel
 
   echo "========================================================="
   echo "now uploading the content to pypi"
-  python3 -m twine upload dist/* --verbose
+  python3.11 -m twine upload dist/* --verbose
 
   echo "please update the package by using this command"
   echo "pip3 install machineroom==$VERSION"
