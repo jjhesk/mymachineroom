@@ -2,10 +2,6 @@ from fabric import Connection, Result
 from machineroom.util import *
 
 
-# from fabric.contrib.files import *
-# from fabric.contrib.console import *
-
-
 def copy_id(c: Connection, file: str = Config.PUB_KEY):
     '''fab push 公钥 ssh-copy-id'''
     print("copy_id operation")
@@ -57,13 +53,12 @@ def detect_program(c: Connection, program: str) -> bool:
 
 def install_python(c: Connection):
     program = '''
-    sudo apt-get install -y \
-    apt-transport-https \
-    ca-certificates \
-    curl \
-    software-properties-common \
-    python3
-    '''
+sudo apt-get install -y \
+apt-transport-https \
+ca-certificates \
+curl \
+software-properties-common \
+python3'''
     c.run(program, warn=True)
 
 
@@ -90,16 +85,8 @@ def install_docker_compose(c: Connection):
     program = f"""
 DOCKER_VER={Config.DOCKER_COMPOSE_VERSION}
 sudo curl -L "https://github.com/docker/compose/releases/download/v$DOCKER_VER/docker-compose-$(uname -s)-$(uname -m)" -o /usr/bin/docker-compose
-chmod +x /usr/bin/docker-compose
-        """
+chmod +x /usr/bin/docker-compose"""
     exec_shell_global(c, program)
-
-
-def run_miner(c: Connection):
-    program = """
-    
-    """
-    exec_shell_global(program)
 
 
 def run_context(c: Connection, block: str) -> Result:
@@ -194,3 +181,20 @@ def check_namespace_index_docker_ps(c: Connection, keywords: list) -> list[int]:
             if k in line:
                 orders.append(keywords.index(k))
     return orders
+
+
+def check_docker_ps_specific(c: Connection, keyword: str) -> bool:
+    return check_docker_ps(c, [keyword])
+
+
+def install_container_management_utility(c: Connection, out_bound_listing_port: int = 8000):
+    if check_docker_ps_specific(c, "yacht") is True:
+        print(f"management yacht is installed. it should be online {c.host}:{out_bound_listing_port}")
+        return
+    program = f"""
+docker volume create yacht
+docker run -d -p {out_bound_listing_port}:8000 --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock -v yacht:/config --name yacht selfhostedpro/yacht
+"""
+    exec_shell_global(c, program)
+    print("[                       yacht is ready                      ]")
+    print(f"{c.host}:{out_bound_listing_port} is ready for the web login")
