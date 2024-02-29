@@ -60,7 +60,7 @@ if __name__ == '__main__':
 ```
 ### The configurations are available as below
 
-
+```
 DATAPATH_BASE = "...._file....locator"
 TEMP_FILE = "tmp.txt"
 TEMP_JS = "tmp.js"
@@ -71,7 +71,7 @@ LOCAL_KEY_HOLDER = "/Users/xxxx/.ssh"
 MY_KEY_FEATURE = "xxxx@xxxxx"
 REMOTE_HOME = "/root"
 DOCKER_COMPOSE_VERSION = "2.24.6"
-
+```
 
 ## Usage
 

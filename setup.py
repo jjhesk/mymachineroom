@@ -64,7 +64,7 @@ setup(
     long_description_content_type='text/markdown',
     author='Jun-You Liu & Heskemo',
     author_email='meowmeow@gmail.com',
-    url='https://github.com/tokenchain/solidity-flatliner',
+    url='https://github.com/jjhesk/mymachineroom/',
     version=find_version(),
     license='MIT',
     keywords='ssh machine room',

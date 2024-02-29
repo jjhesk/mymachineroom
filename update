@@ -45,14 +45,12 @@ pub_ver() {
   echo "pip3 install machineroom==$VERSION"
   echo "wait 30 seconds until it gets uploaded online..."
   # echo "ready and install it again.."
-  # sudo pip3 install --proxy 127.0.0.1:1087 solflatliner==$VERSION
+  rm -rf dist
 }
 
 git_update() {
   git add .
-  #git remote add origin https://gitee.com/jjhoc/moodyeth.git
   git commit -m "auto patched"
-  #git remote add origin https://gitee.com/jjhoc/b-explorer-settings.git
   git push
 }
 
