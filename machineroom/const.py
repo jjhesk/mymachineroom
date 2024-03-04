@@ -1,28 +1,22 @@
-class CKB:
+class PROJECT1:
     REMOTE_WS: str = "...remote_locator"
     RAM_GB_REQUIREMENT: int = 4
     DISK_GB_REQUIREMENT: int = 100
+    CONTAINER_NAME_IDS: list = []
 
 
 class PROJECT2:
-    K1_STR: str
-    K2_STR: str
-    K3_STR: str
-    K4_STR: str
-    K5_STR: str
-    V1_INT: int
-    V2_INT: int
-    V3_INT: int
-    V4_INT: int
-    V5_INT: int
-    V1_FLOAT: float
-    V2_FLOAT: float
-    V3_FLOAT: float
-    V4_FLOAT: float
-    V5_FLOAT: float
+    YACHT_API_KEY: str = "---paste here---"
 
 
-class Config(CKB, PROJECT2):
+class COMMAND_PATH:
+    BASH = "/usr/bin/bash"
+    DOCKER_COMPOSE_VERSION: str = "2.24.6"
+    DOCKER_COMPOSE = "/usr/local/bin/docker-compose"
+    DOCKER = "/usr/bin/docker"
+
+
+class Config(COMMAND_PATH, PROJECT1, PROJECT2):
     DATAPATH_BASE: str = "...._file....locator"
     TEMP_FILE: str = "tmp.txt"
     TEMP_JS: str = "tmp.js"
@@ -30,4 +24,34 @@ class Config(CKB, PROJECT2):
     LOCAL_KEY_HOLDER: str = "/Users/xxxx/.ssh"
     MY_KEY_FEATURE: str = "xxx@xxxx"
     HOME: str = "/root"
-    DOCKER_COMPOSE_VERSION: str = "2.24.6"
+    STAGE1 = ["cert", "docker", "docker-compose", "env"]
+
+
+HEALTH_CHK_DB = """
+docker run --rm -it --mount type=bind,source={PWD},destination=/data sstc/sqlite3 find . -maxdepth 1 -iname "*.db" -print0 -exec sqlite3 '{}' 'PRAGMA integrity_check;' ';'
+"""
+
+HEALTH_CHK_DB2 = """
+sudo apt update && sudo apt install sqlite3 -y
+sqlite3 --version
+sqlite3 {DB_FILE_PATH} "PRAGMA integrity_check;"
+"""
+
+STOP_CONTAINER_BY_NAME = """
+container_id=$(docker ps -q -a -f status=running --filter name={CONTAINER_NAME})
+docker stop $container_id
+docker rm -v {CONTAINER_NAME}
+"""
+
+DOCKER_REMOVE_EXIT = """
+docker ps --filter status=exited -q | xargs docker rm
+"""
+
+DOCKER_CLEAR_CACHE = """
+docker builder prune --all -y
+"""
+
+YACHT_INSTALL = """
+docker volume create yacht
+docker run -d -p {LISTEN_PORT}:8000 --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock -v yacht:/config --name yacht selfhostedpro/yacht
+"""

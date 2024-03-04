@@ -25,8 +25,6 @@ increment_version() {
   fi
 }
 
-
-
 pub_ver() {
   VERSION=$(cat version)
   increment_version $VERSION >version
@@ -45,7 +43,7 @@ pub_ver() {
   echo "pip3 install machineroom==$VERSION"
   echo "wait 30 seconds until it gets uploaded online..."
   # echo "ready and install it again.."
-  rm -rf dist
+  sudo rm -rf dist
 }
 
 git_update() {
@@ -54,5 +52,5 @@ git_update() {
   git push
 }
 
-pub_ver
+#pub_ver
 git_update

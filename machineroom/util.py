@@ -2,12 +2,14 @@
 # coding: utf-8
 import re
 import sys
-
+from fabric import Connection
 from subprocess import Popen, PIPE
 import json
 import os.path
-from typing import Union, Tuple
-from .const import Config
+from typing import Union, Tuple, TextIO
+
+from invoke import StreamWatcher
+from .const import *
 
 CMD_LIST1 = ["ls", "show", "list", "tell"]
 CMD_LIST2 = ["scan", "check", "validation", "valid"]
@@ -442,3 +444,26 @@ class Servers:
     def use_next_node(self) -> dict:
         self._srv_index = self._srv_index + 1
         return self.read_serv_at(self._srv_index)
+
+
+class InfrastructurePlannerFoundation:
+    # total running nodes on this KVM
+    nodes: int
+    # the total steps is always 1+
+    iterate_steps: int
+    # the remote workspace
+    LOCAL_WORKSPACE: str
+    connector: Connection
+    tmp_text_io: TextIO
+    tmp_file_man: BufferFile
+
+    def set_nodes(self, amount_nodes: int):
+        self.nodes = amount_nodes
+        self.iterate_steps = amount_nodes + 1
+        return self
+
+
+class DummyWatcher(StreamWatcher):
+    def submit(self, stream):
+        # print(f'Output: "{stream}"')
+        return []

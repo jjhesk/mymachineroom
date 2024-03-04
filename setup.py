@@ -58,10 +58,11 @@ py_version = platform.python_version()
 setup(
     name='machineroom',
     packages=find_packages(),
-    include_package_data=True,
     description='A Python package to manage all my machines in the fingertip.',
     long_description=long_description,
     long_description_content_type='text/markdown',
+    include_package_data=False,
+    package_data={'': ['*.json']},
     author='Jun-You Liu & Heskemo',
     author_email='meowmeow@gmail.com',
     url='https://github.com/jjhesk/mymachineroom/',

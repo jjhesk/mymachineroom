@@ -1,0 +1,58 @@
+[
+  {
+    "table_name": "server_room",
+    "fields": [
+      {
+        "name": "host",
+        "type": "char",
+        "length": "100",
+        "null": 0
+      },
+      {
+        "name": "id",
+        "type": "char",
+        "length": "100",
+        "null": 0
+      },
+      {
+        "name": "description",
+        "type": "char",
+        "length": "1000",
+        "null": 1
+      },
+      {
+        "name": "user",
+        "type": "char",
+        "length": "100",
+        "null": 0
+      },
+      {
+        "name": "pass",
+        "type": "char",
+        "length": "100",
+        "null": 0
+      },
+      {
+        "name": "port",
+        "type": "number",
+        "length": "5",
+        "null": 0
+      },
+      {
+        "name": "res",
+        "type": "blob",
+        "length": "100000",
+        "null": 0
+      },
+      {
+        "name": "next_action",
+        "type": "blob",
+        "length": "100000",
+        "null": 0
+      }
+    ],
+    "config": {
+      "primary_key": "id"
+    }
+  }
+]

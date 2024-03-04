@@ -1,4 +1,7 @@
 import os
+
+from machineroom.taskbase import *
+
 try:
     import SQLiteAsJSON
 except:
@@ -10,10 +13,32 @@ from machineroom import *
 execute_path = os.path.dirname(__file__)
 
 
+class Import(DeploymentBotFoundation):
+    def __init__(self, x):
+        super().__init__(x)
+        self.db = ServerRoom()
+        k = 0
+        while k < self.srv.serv_count:
+            self.db.set_server_id(self.srv.current_id)
+            c = self._est_connection()
+            try:
+                self.stage_1(c)
+            except (pexpect.TIMEOUT, pexpect.EOF):
+                print("maybe a time out")
+            except ConnectionResetError as e:
+                self.connection_err(e, True)
+            except Exception as e:
+                self.connection_err(e)
+            self.srv.use_next_node()
+            k += 1
+
+
 def internal_work():
+    """
+    This is the cmd console use functions
+    alpha stage now.
+    """
     (a, b) = use_args()
-    # print(execute_path)
-    server = Servers("my_server_room.txt")
     local = ServerRoom()
     if a == "ls":
         print("Here is my machine room...")
@@ -23,9 +48,12 @@ def internal_work():
             print(f'{id}  -> {host}     certificated [{cert_ok}]')
 
     elif a == "sc":
-        ...
+        print("This function is will be soon available to you.")
     elif a == "import":
-        server = Servers(b)
+        file = os.path.join(Config.DATAPATH_BASE, b)
+        if os.path.exists(file) is False:
+            print("Wrong path cannot open this file")
+        Import(b)
     elif a != None:
         local.set_server_id(a)
         if local.has_this_server() is False:
@@ -38,7 +66,6 @@ def internal_work():
         os.system(f'ssh {port_sentence}-i {cert} -t {u}@{h} {home_path}')
     else:
         err_exit("cannot serv no args")
-
 
 # if __name__ == '__main__':
 #    internal_work()

@@ -160,7 +160,7 @@ class CompanyUserBase(ManageDB):
 
     def show_all_servers(self, tbl: str) -> list:
         cursor = self.conn.cursor()
-        cursor.execute(f"SELECT id, host, res as count FROM {tbl}")
+        cursor.execute(f"SELECT id, host, res FROM {tbl}")
         data = cursor.fetchall()
         cursor.close()
         return data
@@ -211,11 +211,15 @@ class CompanyUserBase(ManageDB):
                     f.write(chunk)
 
 
+this_folder_path = os.path.dirname(__file__)
+
+
 class ServerRoom(CompanyUserBase):
     def __init__(self):
         self._tblembr = "server_room"
         path_db = os.path.join(Config.DATAPATH_BASE, 'cache.db')
-        schema = os.path.join(Config.DATAPATH_BASE, 'schema.json')
+        # redirect the schema path to this module package.
+        schema = os.path.join(this_folder_path, 'schema.json')
         self.cache_db_path = path_db
         new_db = False if os.path.isfile(path_db) else True
         try:
@@ -248,11 +252,17 @@ class ServerRoom(CompanyUserBase):
     def docker_compose_install(self):
         self._update_what_installed("docker_compose_installed")
 
+    def docker_yacht_install(self):
+        self._update_what_installed("yacht_installed")
+
     def python3_install(self):
         self._update_what_installed("python3_installed")
 
     def is_docker_compose_installed(self):
         return self._is_what_installed("docker_compose_installed")
+
+    def is_docker_yacht_installed(self):
+        return self._is_what_installed("yacht_installed")
 
     def is_docker_ce_installed(self):
         return self._is_what_installed("docker_installed")
@@ -296,6 +306,7 @@ class ServerRoom(CompanyUserBase):
             "pass": password,
             "port": port,
             "next_action": "{}",
+            "description": "",
             "res": json.dumps(file)
         }
         return self.insert_new(p)
@@ -321,30 +332,6 @@ class ServerRoom(CompanyUserBase):
         da.update({"profile": profile_res})
         self._update_server_meta(self.server_id, da)
 
-    def update_node_settings(self, key_files: list):
-        da = self.get_member_res(self._tblembr, self.server_id)
-        da.update({"ckb_key_files": key_files})
-        self._update_server_meta(self.server_id, da)
-
-    def update_node_counts(self, n: int):
-        da = self.get_member_res(self._tblembr, self.server_id)
-        da.update({"ckb_nodes": n})
-        self._update_server_meta(self.server_id, da)
-
-    def node_count_ckb(self):
-        da = self.get_member_res(self._tblembr, self.server_id)
-        if "ckb_nodes" in da:
-            return int(da["ckb_nodes"])
-        else:
-            return 0
-
-    def get_key_files(self) -> list:
-        da = self.get_member_res(self._tblembr, self.server_id)
-        if "ckb_key_files" in da:
-            return da["ckb_key_files"]
-        else:
-            return []
-
     def get_home_path(self) -> str:
         da = self.get_member_res(self._tblembr, self.server_id)
         if "home_path" in da:
@@ -364,10 +351,22 @@ class ServerRoom(CompanyUserBase):
         da = self.get_member_res(self._tblembr, server_id)
         return True if program in da and da[program] is True else False
 
-    def tipping_point(self, user: str, id: str, host: str, password: str):
-        # first time to receive profile data to the account.
+    def tipping_point(self, user: str, id: str, host: str, password: str, port: int = 22):
+        """
+        first time to receive profile data to the account and handle the creating the new one on the fly.
+        """
         if self.has_this_server() is False:
-            self._insert_server(host, id, password, user, 22, {})
+            # first time registration
+            self._insert_server(host, id, password, user, port, {})
+        else:
+            # update when the new data is found. but the ID cannot be updated.
+            p = {
+                "host": host,
+                "user": user,
+                "pass": password,
+                "port": port,
+            }
+            return self.update_param(self.server_id, p)
 
     def set_invalidate_token(self):
         d = self.get_member_res(self._tblembr, self.server_id)

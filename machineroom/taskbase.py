@@ -1,4 +1,6 @@
-from fabric import Connection, Result
+import pexpect
+from fabric import Connection, Config as FabricConfig, Result
+from machineroom.sql import ServerRoom
 from machineroom.util import *
 
 
@@ -36,7 +38,17 @@ def detect_cert(c: Connection) -> bool:
 
 def detect_ram(d: Connection) -> float:
     r = d.run("awk '/Mem:/ {print $2}' <(free -h)", warn=True, pty=True, hide=True)
-    line = str(r.stdout.strip().replace("\n", "")).replace("Gi", "")
+    line = str(r.stdout.strip().replace("\n", ""))
+    try:
+        if "Gi" in line:
+            line = float(line.replace("Gi", ""))
+
+        if "Mi" in line:
+            line = float(line.replace("Mi", "")) / 1024
+    except Exception as e:
+        print(e)
+        return 0.0
+
     return float(line)
 
 
@@ -119,21 +131,52 @@ def exec_shell_program_file(c: Connection, remote_path: str, program_file: Buffe
     return exec_shell(c, remote_path, program_file.execution_cmd)
 
 
-def exec_shell(c: Connection, working_path: str, bash_file: str) -> Result:
-    cmd = f'cd {working_path} && /usr/bin/bash {bash_file}'
-    cmd2 = f'cd {working_path} && echo "" > {bash_file}'
-    return c.run(cmd, pty=True, warn=True)
+def exec_shell(c: Connection, working_path: str, bash_file: str, empty_content_after_execution: bool = False) -> Result:
+    cmd0 = f'cd {working_path} && {Config.BASH} {bash_file}'
+    cmd1 = f'cd {working_path} && echo "" > {bash_file}'
+    result = c.run(cmd0, pty=True, timeout=100, warn=True)
+    if result.ok and empty_content_after_execution:
+        result = c.run(cmd1, pty=True, timeout=100, warn=True)
+    return result
 
 
-def exec_docker_compose(c: Connection, working_path: str, yml_file: str) -> Result:
-    cmd1 = f'cd {working_path} && /usr/bin/docker-compose -f {yml_file} up -d'
-    return c.run(cmd1, pty=True, timeout=100)
+def exec_docker_compose(c: Connection, working_path: str, yml_file: str, upgrade: bool = False) -> Result:
+    cmd0 = f"cd {working_path} &&"
+    if yml_file == "docker-compose.yml":
+        if upgrade:
+            cmd0 = cmd0 + f"{Config.DOCKER_COMPOSE} pull &&"
+        cmd1 = cmd0 + f'{Config.DOCKER_COMPOSE} up -d'
+        if upgrade:
+            cmd1 = cmd1 + ' --force-recreate'
+    else:
+        if upgrade:
+            cmd0 = cmd0 + f"{Config.DOCKER_COMPOSE} pull &&"
+        cmd1 = cmd0 + f'{Config.DOCKER_COMPOSE} -f {yml_file} up -d'
+        if upgrade:
+            cmd1 = cmd1 + ' --force-recreate'
+
+    return c.run(cmd1, pty=True, timeout=100, warn=True, echo=True)
 
 
 def exec_container_program(c: Connection, container_id: str, bash_line: str) -> Result:
     # cmd1 = f'cd {working_path} && docker exec {container_id} ckb miner'
-    cmd2 = f'docker exec {container_id} {bash_line} &'
+    cmd2 = f'{Config.DOCKER} exec {container_id} {bash_line} &'
     return c.run(cmd2, pty=True, timeout=100, warn=True)
+
+
+def deploy_container_with_docker_compose(
+        c: Connection, docker_compose_file_content: str, force_recreate: bool = False
+) -> Result:
+    """
+    please check if the docker-compose exists otherwise it will have a problem
+    """
+    tmp_file = BufferFile()
+    tmp_file.setName("tmp_docker-compose.yml")
+    tmp_file.add_cmd(docker_compose_file_content)
+    remote_path = os.path.join(Config.REMOTE_WS, "docker-compose.yml")
+    local_path = os.path.join(Config.DATAPATH_BASE, tmp_file.execution_cmd)
+    c.put(local_path, remote_path)
+    return exec_docker_compose(c, Config.REMOTE_WS, "docker-compose.yml", force_recreate)
 
 
 def check_no_permission(c: Connection):
@@ -191,10 +234,144 @@ def install_container_management_utility(c: Connection, out_bound_listing_port: 
     if check_docker_ps_specific(c, "yacht") is True:
         print(f"management yacht is installed. it should be online {c.host}:{out_bound_listing_port}")
         return
-    program = f"""
-docker volume create yacht
-docker run -d -p {out_bound_listing_port}:8000 --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock -v yacht:/config --name yacht selfhostedpro/yacht
-"""
-    exec_shell_global(c, program)
+
+    exec_shell_global(c, YACHT_INSTALL.format(LISTEN_PORT=out_bound_listing_port))
     print("[                       yacht is ready                      ]")
     print(f"{c.host}:{out_bound_listing_port} is ready for the web login")
+
+
+# docker run -d -p 9055:8000 --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock -v yacht:/config --name yacht selfhostedpro/yacht
+
+
+class DeploymentBotFoundation:
+    # the text file servers that recorded the authentications and some basic information
+    srv: Servers
+    # the local db connection of servers
+    db: ServerRoom
+
+    def __init__(self, server_room: str):
+        # the server room file, usually "xxxx_server_room.txt", located under cache folder.
+        self.srv = Servers(server_room)
+        self.srv.detect_servers()
+
+    def _config(self) -> FabricConfig:
+        return FabricConfig({
+            'run': {
+                'watchers': [
+                    DummyWatcher(),
+                ],
+            },
+        })
+
+    def _est_connection(self) -> Connection:
+        if self.db.has_this_server() is False:
+            return Connection(host=self.srv.current_host, port=22, user=self.srv.current_user, connect_kwargs={
+                "password": self.srv.current_pass,
+                # "key_filename": ['/Users/..../.ssh/id_rsa']
+            }, config=self._config())
+        elif self.db.is_cert_installed() is False:
+            return Connection(host=self.srv.current_host, port=22, user=self.srv.current_user, connect_kwargs={
+                "password": self.srv.current_pass,
+                # "key_filename": ['/Users/..../.ssh/id_rsa']
+            }, config=self._config())
+        else:
+            print("cert is installed.")
+            return Connection(host=self.srv.current_host, port=22, user=self.srv.current_user, connect_kwargs={
+                # "password": self.srv.current_pass,
+                "key_filename": [Config.PUB_KEY]
+            }, config=self._config())
+
+    def connection_err(self, item, on_err_exit: bool = False):
+        print("======================== exit.")
+        print(self.srv.current_id, self.srv.current_host)
+        if "Connection reset by peer" in str(item) or "Errno 54" in str(item):
+            print("Maybe Offline")
+        else:
+            print(item)
+        print("======================== exit.")
+        if on_err_exit:
+            exit(1)
+
+    def handle_exceptions(self, e: Exception) -> bool:
+        if isinstance(e, pexpect.TIMEOUT):
+            print("maybe a time out")
+            return False
+        elif isinstance(e, pexpect.EOF):
+            print("maybe end of file")
+            return False
+        elif isinstance(e, ConnectionResetError):
+            self.connection_err(e)
+            return False
+        else:
+            self.connection_err(e)
+            return True
+
+    def stage_1(self, c: Connection):
+        self.db.tipping_point(
+            self.srv.current_user, self.srv.current_id,
+            self.srv.current_host, self.srv.current_pass
+        )
+        for key in Config.STAGE1:
+            self._stage_loop(c, key)
+
+    def load_system_paths(self, c: Connection):
+        r = c.run("which bash", warn=True, pty=True)
+        if str(r.stdout.strip()) != "":
+            Config.BASH = str(r.stdout.strip())
+        r = c.run("which docker", warn=True, pty=True)
+        if str(r.stdout.strip()) != "":
+            Config.DOCKER = str(r.stdout.strip())
+        r = c.run("which docker-compose", warn=True, pty=True)
+        if str(r.stdout.strip()) != "":
+            Config.DOCKER_COMPOSE = str(r.stdout.strip())
+
+    def _stage_loop(self, c: Connection, task: str):
+        if task == "cert":
+            if self.db.is_cert_installed() is False:
+                if detect_cert(c) is False:
+                    copy_id(c)
+                    self.db.cert_install()
+                else:
+                    self.db.cert_install()
+
+        if task == "env":
+            c.config.load_shell_env()
+            self.load_system_paths(c)
+
+        if task == "docker":
+            if self.db.is_docker_ce_installed() is False:
+                if detect_program(c, "docker") is False:
+                    install_docker_ce(c)
+                    self.db.docker_ce_install()
+                else:
+                    print("DOCKER is installed")
+
+        if task == "docker-compose":
+            if self.db.is_docker_compose_installed() is False:
+                if detect_program(c, "docker-compose") is False:
+                    install_docker_compose(c)
+                    self.db.docker_compose_install()
+                else:
+                    print("DOCKER COMPOSE is installed")
+                    check_no_permission(c)
+
+        if task == "yacht9099":
+            if self.db.is_docker_yacht_installed() is False:
+                install_container_management_utility(c, 9099)
+                self.db.docker_yacht_install()
+
+        if task == "python":
+            if self.db.is_python_installed() is False:
+                if detect_program(c, "python3") is False:
+                    print("python3 needs to install")
+                    install_python(c)
+
+        if task == "yacht8221":
+            if self.db.is_docker_yacht_installed() is False:
+                install_container_management_utility(c, 8221)
+                self.db.docker_yacht_install()
+
+        if task == "yacht9055":
+            if self.db.is_docker_yacht_installed() is False:
+                install_container_management_utility(c, 9055)
+                self.db.docker_yacht_install()
