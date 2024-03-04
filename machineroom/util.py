@@ -397,6 +397,8 @@ class Servers:
     current_host: str
     current_user: str
     current_pass: str
+    _srv_index: int
+    _meta_file: int
 
     def __init__(self, file: str):
         self._meta_file = file
@@ -406,6 +408,10 @@ class Servers:
     @property
     def path_file(self) -> str:
         return os.path.join(Config.DATAPATH_BASE, self._meta_file)
+
+    @property
+    def at_server(self) -> int:
+        return self._srv_index
 
     def detect_servers(self):
         self.serv_count = read_file_total_lines(self.path_file)
