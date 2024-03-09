@@ -28,7 +28,7 @@ class Import(DeploymentBotFoundation):
             except ConnectionResetError as e:
                 self.connection_err(e, True)
             except Exception as e:
-                self.connection_err(e)
+                self.connection_err(e, False)
             self.srv.use_next_node()
             k += 1
 

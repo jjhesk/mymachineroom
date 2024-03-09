@@ -444,7 +444,7 @@ class Servers:
         self.current_host = line[1]
         self.current_user = line[2]
         self.current_pass = line[3]
-        print(f"######## Now enter server ID: {line[0]} {line[1]}")
+        print(f"######## Now enter server ID#{n}: {line[0]} {line[1]}")
         return tmp
 
     def use_next_node(self) -> dict:

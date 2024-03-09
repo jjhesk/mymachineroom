@@ -28,6 +28,12 @@ def exists(c: Connection, path: str) -> bool:
         return True
 
 
+def ensure_path_exist(c: Connection, path: str) -> bool:
+    if exists(c, path) is False:
+        print(f"make path for {path}")
+        c.run(f"mkdir -p {path}", warn=True, pty=True)
+
+
 # https://fabric-zh.readthedocs.io/_/downloads/zh-cn/latest/pdf/
 def detect_cert(c: Connection) -> bool:
     print("detect certification")
@@ -63,42 +69,40 @@ def detect_program(c: Connection, program: str) -> bool:
     return True
 
 
+DETECT_PROCESS = 'ps aux | grep -sie "{COMMAND_NAME}" | grep -v "grep -sie"'
+
+
+def detect_process(c: Connection, command: str) -> bool:
+    print("detect program ", command)
+    r = c.run(DETECT_PROCESS.format(COMMAND_NAME=command), pty=False, timeout=3000, warn=True)
+    before = r.stdout.strip()
+    if before == "":
+        return False
+    else:
+        count = str(before).split("\n")
+        return len(count) > 0
+
+
+def detect_available_ports(c: Connection) -> list:
+    print("检测并罗列未被占用的端口")
+    r = exec_shell_global(c, PORT_DETECTION)
+    ports = r.stdout.strip().split("\n")
+    return ports
+
+
 def install_python(c: Connection):
-    program = '''
-sudo apt-get install -y \
-apt-transport-https \
-ca-certificates \
-curl \
-software-properties-common \
-python3'''
-    c.run(program, warn=True)
+    c.run(PYTHON_CE, warn=True)
 
 
 def install_docker_ce(c: Connection):
-    program = """
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-sudo apt-key fingerprint 0EBFCD88
-sudo add-apt-repository \
-"deb [arch=amd64] https://download.docker.com/linux/ubuntu \
-$(lsb_release -cs) \
-stable"
-sudo apt-get update
-sudo apt-get install -y docker-ce
-sudo apt-get update
-sudo groupadd docker
-sudo usermod -aG docker $USER
-sudo systemctl enable docker
-    """
-    exec_shell_global(c, program)
+    exec_shell_global(c, DOCKER_CE_INSTALL)
     return True
 
 
 def install_docker_compose(c: Connection):
-    program = f"""
-DOCKER_VER={Config.DOCKER_COMPOSE_VERSION}
-sudo curl -L "https://github.com/docker/compose/releases/download/v$DOCKER_VER/docker-compose-$(uname -s)-$(uname -m)" -o /usr/bin/docker-compose
-chmod +x /usr/bin/docker-compose"""
-    exec_shell_global(c, program)
+    exec_shell_global(c, DOCKER_COMPOSE.format(
+        DOCKER_COMPOSE_VERSION=Config.DOCKER_COMPOSE_VERSION
+    ))
 
 
 def run_context(c: Connection, block: str) -> Result:
@@ -109,19 +113,18 @@ def run_context(c: Connection, block: str) -> Result:
 def run_local_file(c: Connection, file_name: str) -> Result:
     script_file = open(file_name)
     result = c.run(script_file.read())
-
     script_file.close()
     return result
 
 
-def exec_shell_global(c: Connection, program: str):
-    return exec_shell_program(c, Config.HOME, program)
+def exec_shell_global(c: Connection, _program_: str):
+    return exec_shell_program(c, Config.HOME, _program_)
 
 
-def exec_shell_program(c: Connection, remote_path: str, program: str) -> Result:
+def exec_shell_program(c: Connection, remote_path: str, _program_: str) -> Result:
     buffer_file = BufferFile()
     buffer_file.new_bash()
-    buffer_file.add_cmd(program)
+    buffer_file.add_cmd(_program_)
     c.put(buffer_file.path, remote_path)
     return exec_shell(c, remote_path, buffer_file.execution_cmd)
 
@@ -134,9 +137,9 @@ def exec_shell_program_file(c: Connection, remote_path: str, program_file: Buffe
 def exec_shell(c: Connection, working_path: str, bash_file: str, empty_content_after_execution: bool = False) -> Result:
     cmd0 = f'cd {working_path} && {Config.BASH} {bash_file}'
     cmd1 = f'cd {working_path} && echo "" > {bash_file}'
-    result = c.run(cmd0, pty=True, timeout=100, warn=True)
+    result = c.run(cmd0, pty=True, timeout=3000, warn=True)
     if result.ok and empty_content_after_execution:
-        result = c.run(cmd1, pty=True, timeout=100, warn=True)
+        result = c.run(cmd1, pty=True, timeout=3600, warn=True)
     return result
 
 
@@ -155,13 +158,13 @@ def exec_docker_compose(c: Connection, working_path: str, yml_file: str, upgrade
         if upgrade:
             cmd1 = cmd1 + ' --force-recreate'
 
-    return c.run(cmd1, pty=True, timeout=100, warn=True, echo=True)
+    return c.run(cmd1, pty=True, timeout=3600, warn=True, echo=True)
 
 
 def exec_container_program(c: Connection, container_id: str, bash_line: str) -> Result:
     # cmd1 = f'cd {working_path} && docker exec {container_id} ckb miner'
     cmd2 = f'{Config.DOCKER} exec {container_id} {bash_line} &'
-    return c.run(cmd2, pty=True, timeout=100, warn=True)
+    return c.run(cmd2, pty=True, timeout=900, warn=True)
 
 
 def deploy_container_with_docker_compose(
@@ -234,7 +237,6 @@ def install_container_management_utility(c: Connection, out_bound_listing_port: 
     if check_docker_ps_specific(c, "yacht") is True:
         print(f"management yacht is installed. it should be online {c.host}:{out_bound_listing_port}")
         return
-
     exec_shell_global(c, YACHT_INSTALL.format(LISTEN_PORT=out_bound_listing_port))
     print("[                       yacht is ready                      ]")
     print(f"{c.host}:{out_bound_listing_port} is ready for the web login")
@@ -281,7 +283,7 @@ class DeploymentBotFoundation:
                 "key_filename": [Config.PUB_KEY]
             }, config=self._config())
 
-    def connection_err(self, item, on_err_exit: bool = False):
+    def connection_err(self, item: Exception, on_err_exit: bool):
         print("======================== exit.")
         print(self.srv.current_id, self.srv.current_host)
         if "Connection reset by peer" in str(item) or "Errno 54" in str(item):
@@ -292,7 +294,7 @@ class DeploymentBotFoundation:
         if on_err_exit:
             exit(1)
 
-    def handle_exceptions(self, e: Exception) -> bool:
+    def handle_exceptions(self, e: Exception, fail_exit: bool = False) -> bool:
         if isinstance(e, pexpect.TIMEOUT):
             print("maybe a time out")
             return False
@@ -300,10 +302,10 @@ class DeploymentBotFoundation:
             print("maybe end of file")
             return False
         elif isinstance(e, ConnectionResetError):
-            self.connection_err(e)
+            self.connection_err(e, fail_exit)
             return False
         else:
-            self.connection_err(e)
+            self.connection_err(e, fail_exit)
             return True
 
     def stage_1(self, c: Connection):
@@ -329,7 +331,7 @@ class DeploymentBotFoundation:
         if task == "cert":
             if self.db.is_cert_installed() is False:
                 if detect_cert(c) is False:
-                    copy_id(c)
+                    copy_id(c, Config.PUB_KEY)
                     self.db.cert_install()
                 else:
                     self.db.cert_install()
