@@ -36,10 +36,14 @@ def ensure_path_exist(c: Connection, path: str) -> bool:
 
 # https://fabric-zh.readthedocs.io/_/downloads/zh-cn/latest/pdf/
 def detect_cert(c: Connection) -> bool:
-    print("detect certification")
     r = c.run("cat ~/.ssh/authorized_keys", warn=True)
     line = str(r.stdout.strip().replace("\n", ""))
-    return True if Config.MY_KEY_FEATURE in line else False
+    t = True if Config.MY_KEY_FEATURE in line else False
+    if t is True:
+        print(f"certification found {Config.MY_KEY_FEATURE}")
+    else:
+        print(f"certification not found for {Config.MY_KEY_FEATURE}")
+    return t
 
 
 def detect_ram(d: Connection) -> float:
