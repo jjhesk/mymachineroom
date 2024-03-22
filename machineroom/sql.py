@@ -46,7 +46,7 @@ def obj_to_string(update_config) -> str:
     return update_string
 
 
-class CompanyUserBase(ManageDB):
+class ToolDb(ManageDB):
     """
     modified blockchain db controller
     """
@@ -178,27 +178,31 @@ class CompanyUserBase(ManageDB):
         _da = json.loads(next_action)
         return _da
 
-    def _is_what_ready_res(self, tble_member: str, address: str, key: str) -> bool:
+    def get_time_now(self, future_seconds: int = 0) -> int:
         current_time = datetime.datetime.now().timestamp()
-        current_time = int(current_time)
-        from_dat = self.get_next_action(tble_member, address)
-        if key in from_dat:
-            time_next = from_dat[key]
-            return current_time > time_next
-
-        print(f"key {key} not exist. decision is OK.")
-        return True
+        current_time = int(current_time) + future_seconds
+        return current_time
 
     def _check_point_update_res(self, tble_member: str, address: str, key: str, next_seconds: int = 3600):
+        # the default next action is 1 hour after
         from_dat = self.get_next_action(tble_member, address)
-        current_time = datetime.datetime.now().timestamp()
-        current_time = int(current_time)
         from_dat.update({
-            key: current_time + next_seconds
+            key: self.get_time_now(next_seconds)
         })
         self.update_by_id(tble_member, address, {
             "next_action": json.dumps(from_dat)
         })
+
+    def has_address(self, tbl: str, address_key: str) -> bool:
+        return False
+
+    def _is_what_ready_res(self, tble_member: str, address: str, key: str) -> bool:
+        from_dat = self.get_next_action(tble_member, address)
+        if key in from_dat:
+            time_next = from_dat[key]
+            return self.get_time_now() > time_next
+        print(f"key {key} not exist. decision is OK.")
+        return True
 
     def keepcopy(self, file_path: str, r: Response):
         try:
@@ -214,7 +218,7 @@ class CompanyUserBase(ManageDB):
 this_folder_path = os.path.dirname(__file__)
 
 
-class ServerRoom(CompanyUserBase):
+class ServerRoom(ToolDb):
     def __init__(self):
         self._tblembr = "server_room"
         path_db = os.path.join(Config.DATAPATH_BASE, 'cache.db')
@@ -257,12 +261,16 @@ class ServerRoom(CompanyUserBase):
 
     def python3_install(self):
         self._update_what_installed("python3_installed")
-
+    def dae_install(self):
+        self._update_what_installed("daed_installed")
     def is_docker_compose_installed(self):
         return self._is_what_installed("docker_compose_installed")
 
     def is_docker_yacht_installed(self):
         return self._is_what_installed("yacht_installed")
+
+    def is_dae_installed(self):
+        return self._is_what_installed("daed_installed")
 
     def is_docker_ce_installed(self):
         return self._is_what_installed("docker_installed")

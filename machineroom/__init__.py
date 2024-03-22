@@ -38,4 +38,4 @@ logger3.setLevel(logging.ERROR)
 logger4.setLevel(logging.ERROR)
 logger5.setLevel(logging.ERROR)
 
-__version__ = '0.44.0'
+__version__ = '0.44.3'

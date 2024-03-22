@@ -32,6 +32,9 @@ def ensure_path_exist(c: Connection, path: str) -> bool:
     if exists(c, path) is False:
         print(f"make path for {path}")
         c.run(f"mkdir -p {path}", warn=True, pty=True)
+        return False
+    else:
+        return True
 
 
 # https://fabric-zh.readthedocs.io/_/downloads/zh-cn/latest/pdf/
@@ -44,6 +47,23 @@ def detect_cert(c: Connection) -> bool:
     else:
         print(f"certification not found for {Config.MY_KEY_FEATURE}")
     return t
+
+
+def detect_cert_signature(c: Connection, machine_name: str) -> bool:
+    r = c.run("cat ~/.ssh/authorized_keys", warn=True)
+    line = str(r.stdout.strip().replace("\n", ""))
+    t = True if machine_name in line else False
+    if t is True:
+        print(f"certification found {machine_name}")
+    else:
+        print(f"certification not found for {machine_name}")
+    return t
+
+
+def detect_assigned_IP_addresses(c: Connection) -> list[str]:
+    r = c.run("""ip addr show eth0 | grep "inet\b" | awk '{print $2}' | cut -d/ -f1""", warn=True, pty=True, hide=True)
+    the_list_ips = str(r.stdout.strip()).split("\n")
+    return the_list_ips
 
 
 def detect_ram(d: Connection) -> float:
@@ -73,9 +93,6 @@ def detect_program(c: Connection, program: str) -> bool:
     return True
 
 
-DETECT_PROCESS = 'ps aux | grep -sie "{COMMAND_NAME}" | grep -v "grep -sie"'
-
-
 def detect_process(c: Connection, command: str) -> bool:
     print("detect program ", command)
     r = c.run(DETECT_PROCESS.format(COMMAND_NAME=command), pty=False, timeout=3000, warn=True)
@@ -92,21 +109,6 @@ def detect_available_ports(c: Connection) -> list:
     r = exec_shell_global(c, PORT_DETECTION)
     ports = r.stdout.strip().split("\n")
     return ports
-
-
-def install_python(c: Connection):
-    c.run(PYTHON_CE, warn=True)
-
-
-def install_docker_ce(c: Connection):
-    exec_shell_global(c, DOCKER_CE_INSTALL)
-    return True
-
-
-def install_docker_compose(c: Connection):
-    exec_shell_global(c, DOCKER_COMPOSE.format(
-        DOCKER_COMPOSE_VERSION=Config.DOCKER_COMPOSE_VERSION
-    ))
 
 
 def run_context(c: Connection, block: str) -> Result:
@@ -165,8 +167,29 @@ def exec_docker_compose(c: Connection, working_path: str, yml_file: str, upgrade
     return c.run(cmd1, pty=True, timeout=3600, warn=True, echo=True)
 
 
+def stop_running_container(c: Connection, container_name: str) -> Result:
+    cmd_line_go = DOCKER_STOP_REMOVE.format(
+        COMMAND_DOCKER=Config.DOCKER,
+        CONTAINER_NAME=container_name
+    )
+    return c.run(cmd_line_go, pty=True, timeout=900, warn=True)
+
+
+def launcher_docker_container(
+        c: Connection, container_name: str, volume: str, image_tag: str, version: str, command: str
+) -> Result:
+    cline = DOCKER_LAUNCH_LINE.format(
+        COMMAND_DOCKER=Config.DOCKER,
+        NODE_NAME=container_name,
+        IMAGE=image_tag,
+        VERSION=version,
+        COMMAND=command,
+        VOLUME=volume,
+    )
+    return c.run(cline, pty=True, timeout=3600, warn=True)
+
+
 def exec_container_program(c: Connection, container_id: str, bash_line: str) -> Result:
-    # cmd1 = f'cd {working_path} && docker exec {container_id} ckb miner'
     cmd2 = f'{Config.DOCKER} exec {container_id} {bash_line} &'
     return c.run(cmd2, pty=True, timeout=900, warn=True)
 
@@ -243,10 +266,31 @@ def install_container_management_utility(c: Connection, out_bound_listing_port: 
         return
     exec_shell_global(c, YACHT_INSTALL.format(LISTEN_PORT=out_bound_listing_port))
     print("[                       yacht is ready                      ]")
-    print(f"{c.host}:{out_bound_listing_port} is ready for the web login")
+    print(
+        f"{c.host}:{out_bound_listing_port} is ready for the web login. Try to use chrome to open with [admin@yacht.local : pass]")
 
 
-# docker run -d -p 9055:8000 --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock -v yacht:/config --name yacht selfhostedpro/yacht
+def run_yacht_restart(c: Connection, port: str):
+    return c.run(RUN_YACHT.format(LISTEN_PORT=port), pty=True, timeout=300, warn=True)
+
+
+def install_dae_proxy(c: Connection):
+    return c.run(INSTALL_DAED, pty=True, timeout=900, warn=True)
+
+
+def install_python(c: Connection):
+    return c.run(PYTHON_CE, warn=True)
+
+
+def install_docker_ce(c: Connection):
+    exec_shell_global(c, DOCKER_CE_INSTALL)
+    return True
+
+
+def install_docker_compose(c: Connection):
+    exec_shell_global(c, DOCKER_COMPOSE.format(
+        DOCKER_COMPOSE_VERSION=Config.DOCKER_COMPOSE_VERSION
+    ))
 
 
 class DeploymentBotFoundation:
@@ -361,23 +405,24 @@ class DeploymentBotFoundation:
                     print("DOCKER COMPOSE is installed")
                     check_no_permission(c)
 
-        if task == "yacht9099":
-            if self.db.is_docker_yacht_installed() is False:
-                install_container_management_utility(c, 9099)
-                self.db.docker_yacht_install()
-
         if task == "python":
             if self.db.is_python_installed() is False:
                 if detect_program(c, "python3") is False:
                     print("python3 needs to install")
                     install_python(c)
+                    self.db.python3_install()
 
-        if task == "yacht8221":
-            if self.db.is_docker_yacht_installed() is False:
-                install_container_management_utility(c, 8221)
-                self.db.docker_yacht_install()
+        if task == "daed":
+            if self.db.is_dae_installed() is False:
+                if detect_program(c, "daed") is False:
+                    print("daed will be installed")
+                    install_dae_proxy(c)
+                    self.db.dae_install()
 
-        if task == "yacht9055":
+        if task.startswith("yacht"):
+            port = task.replace("yacht", "")
+            if port == "":
+                port = "9055"
             if self.db.is_docker_yacht_installed() is False:
-                install_container_management_utility(c, 9055)
+                install_container_management_utility(c, int(port))
                 self.db.docker_yacht_install()
