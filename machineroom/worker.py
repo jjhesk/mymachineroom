@@ -43,10 +43,17 @@ def internal_work():
     if a == "ls":
         print("Here is my machine room...")
         gh = local.show_all_serv()
-        for (id, host, res) in gh:
-            cert_ok = "YES" if local.is_what_installed_full("identity_cert_installed", id) else "NO"
-            print(f'{id}  -> {host}     certificated [{cert_ok}]')
 
+        for (id, host, res) in gh:
+            y = FieldConstruct()
+            y.add_icon(f"{id}  -> {host}     ")
+            y.add_icon("CERT" if local.is_what_installed_full("identity_cert_installed", id) else "")
+            y.add_icon("DOCKER" if local.is_what_installed_full("docker_compose_installed", id) else "")
+            y.add_icon("DOCKER COMPOSE" if local.is_what_installed_full("docker_installed", id) else "")
+            y.add_icon("DEAD" if local.is_what_installed_full("daed_installed", id) else "")
+            y.add_icon("YACHT" if local.is_what_installed_full("yacht_installed", id) else "")
+            y.add_icon("PY" if local.is_what_installed_full("python3_installed", id) else "")
+            print(y.output())
     elif a == "sc":
         print("This function is will be soon available to you.")
     elif a == "import":

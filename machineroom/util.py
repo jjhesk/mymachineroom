@@ -473,3 +473,38 @@ class DummyWatcher(StreamWatcher):
     def submit(self, stream):
         # print(f'Output: "{stream}"')
         return []
+
+
+class FieldConstruct:
+    def __init__(self):
+        self._line_ = ""
+
+    def add_line(self, line: str):
+        self._line_ += line
+        self._line_ += "\n"
+
+    def normal_field(self, key: str, val: str):
+        self._line_ += key
+        self._line_ += ": "
+        self._line_ += val
+        self._line_ += "\n"
+
+    def add_block(self, key: str, val: str):
+        self._line_ += key
+        self._line_ += ": "
+        self._line_ += "\n"
+        self._line_ += val
+        self._line_ += "\n"
+
+    def normal_field_table(self, key: str, val: str):
+        self._line_ += key
+        self._line_ += ": "
+        self._line_ += val
+        self._line_ += "\n"
+
+    def add_icon(self, val: str):
+        self._line_ += val
+        self._line_ += ", "
+
+    def output(self) -> str:
+        return self._line_
