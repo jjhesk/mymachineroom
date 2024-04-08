@@ -17,12 +17,6 @@
 #
 
 import logging
-import math
-import os.path
-
-import pexpect, struct, fcntl, termios, signal, sys
-from fabric import Config
-from invoke import StreamWatcher
 
 from machineroom.sql import ServerRoom
 from machineroom.util import *
@@ -38,4 +32,4 @@ logger3.setLevel(logging.ERROR)
 logger4.setLevel(logging.ERROR)
 logger5.setLevel(logging.ERROR)
 
-__version__ = '0.44.3'
+__version__ = '0.44.8'

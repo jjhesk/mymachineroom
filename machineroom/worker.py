@@ -43,7 +43,6 @@ def internal_work():
     if a == "ls":
         print("Here is my machine room...")
         gh = local.show_all_serv()
-
         for (id, host, res) in gh:
             y = FieldConstruct()
             y.add_icon(f"{id}  -> {host}     ")

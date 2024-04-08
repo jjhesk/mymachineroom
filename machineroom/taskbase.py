@@ -33,8 +33,17 @@ def ensure_path_exist(c: Connection, path: str) -> bool:
         print(f"make path for {path}")
         c.run(f"mkdir -p {path}", warn=True, pty=True)
         return False
+    return True
+
+
+def upload_cache_file(c: Connection, cache_file_name: str, if_not_exist: bool = False):
+    remote_path = os.path.join(Config.REMOTE_WS, "cache", cache_file_name)
+    local_path = os.path.join(Config.WS_LOCAL, "cache", cache_file_name)
+    if if_not_exist is True:
+        if exists(c, remote_path) is False:
+            c.put(local_path, remote_path)
     else:
-        return True
+        c.put(local_path, remote_path)
 
 
 # https://fabric-zh.readthedocs.io/_/downloads/zh-cn/latest/pdf/
@@ -148,6 +157,42 @@ def exec_shell(c: Connection, working_path: str, bash_file: str, empty_content_a
         result = c.run(cmd1, pty=True, timeout=3600, warn=True)
     return result
 
+# Back up related commands
+def safe_cache_backup(c: Connection, local_file_name: str):
+    """
+    safely backup the working cache file in the remote server
+    download the gz db to local
+    """
+    original_rm = os.path.join(Config.REMOTE_WS, "cache", "cache.db")
+    remote_path = os.path.join(Config.REMOTE_WS, "cache", local_file_name)
+    t = BACKUP_CACHE_FAST.replace("_CFP_", original_rm).replace("_FR_", local_file_name)
+    exec_shell_program(c, "/tmp", t)
+    local_path = os.path.join(Config.WS_LOCAL, "cache", "server_backups", local_file_name)
+    c.get(remote_path, local_path)
+    print("Download successful")
+    return local_path
+
+
+def open_backup_cache_local(local_path) -> str:
+    """
+    the final local path of the cache file backup
+    """
+    local_fz = os.path.join(Config.WS_LOCAL, "cache", "server_backups", "cache.db")
+    (p, f) = os.path.split(local_path)
+    # local_compressed = os.path.join(WS_LOCAL, "cache", local_file_name)
+    # local_fz = os.path.join(WS_LOCAL, "cache", local_file_name.replace(".tar.gz", ""))
+    # db_name_x = f.replace(".tar.gz", "")
+    # local_pd = os.path.join(WS_LOCAL, "cache")
+    local_cmd = f'cd {p} && tar -xvf {f}'
+    print(local_cmd)
+    os.system(local_cmd)
+    # os.renames("cache.db", db_name_x)
+    os.chdir(Config.WS_LOCAL)
+    # return os.path.join(p, db_name_x)
+    return local_fz
+
+
+# Docker related commands in library
 
 def exec_docker_compose(c: Connection, working_path: str, yml_file: str, upgrade: bool = False) -> Result:
     cmd0 = f"cd {working_path} &&"
@@ -167,26 +212,82 @@ def exec_docker_compose(c: Connection, working_path: str, yml_file: str, upgrade
     return c.run(cmd1, pty=True, timeout=3600, warn=True, echo=True)
 
 
-def stop_running_container(c: Connection, container_name: str) -> Result:
-    cmd_line_go = DOCKER_STOP_REMOVE.format(
+def stop_rm_container(c: Connection, container_name: str):
+    cmd_line_go1 = DOCKER_STOP_CONTAIN_NAME.format(
         COMMAND_DOCKER=Config.DOCKER,
         CONTAINER_NAME=container_name
     )
-    return c.run(cmd_line_go, pty=True, timeout=900, warn=True)
-
-
-def launcher_docker_container(
-        c: Connection, container_name: str, volume: str, image_tag: str, version: str, command: str
-) -> Result:
-    cline = DOCKER_LAUNCH_LINE.format(
+    cmd_line_go2 = DOCKER_RM_NAME_BASED.format(
         COMMAND_DOCKER=Config.DOCKER,
-        NODE_NAME=container_name,
-        IMAGE=image_tag,
-        VERSION=version,
-        COMMAND=command,
-        VOLUME=volume,
+        CONTAINER_NAME=container_name
     )
-    return c.run(cline, pty=True, timeout=3600, warn=True)
+    buf_fi = BufferFile()
+    buf_fi.new_bash()
+    buf_fi.add_cmd(cmd_line_go1)
+    buf_fi.add_cmd(cmd_line_go2)
+    exec_shell_program_file(c, "/tmp", buf_fi)
+
+
+def docker_is_container_conflict(rs: Result):
+    line = str(rs.stdout)
+    if "Error response from daemon: Conflict. The container name" in line:
+        # Regular expression pattern to extract the hash inside double quotes
+        pattern = r'"([a-fA-F0-9]+)"'
+        # Find all occurrences of the pattern in the error message
+        hashes = re.findall(pattern, line)
+        return True, hashes[0]
+    else:
+        return False, ""
+
+
+def docker_solve_conflict(c: Connection, hash: str):
+    c.run(DOCKER_STOP_ID.format(CID=hash, COMMAND_DOCKER=Config.DOCKER), pty=True, timeout=100, warn=True, echo=True)
+    c.run(DOCKER_STOP_RM.format(CID=hash, COMMAND_DOCKER=Config.DOCKER), pty=True, timeout=100, warn=True, echo=True)
+
+
+def docker_launch(c: Connection, vol: str, container_name: str, image: str, ver: str, command: str) -> Result:
+    return c.run(DOCKER_LAUNCH_LINE.format(
+        COMMAND_DOCKER=Config.DOCKER,
+        VOLUME=vol,
+        NODE_NAME=container_name,
+        IMAGE=image,
+        VERSION=ver,
+        COMMAND=command,
+    ), pty=True, timeout=4900, warn=True, echo=True)
+
+
+def stop_container_by_name(c: Connection, container_name: str):
+    cmd_line_go = DOCKER_STOP_CONTAIN_NAME.format(
+        COMMAND_DOCKER=Config.DOCKER,
+        CONTAINER_NAME=container_name
+    )
+    return c.run(cmd_line_go, pty=True, timeout=1900, warn=True, echo=True)
+
+
+def rm_container_by_name(c: Connection, container_name: str):
+    cmd_line_go = DOCKER_RM_NAME_BASED.format(
+        COMMAND_DOCKER=Config.DOCKER,
+        CONTAINER_NAME=container_name
+    )
+    return c.run(cmd_line_go, pty=True, timeout=1900, warn=True, echo=True)
+
+
+def rm_vol_by_name(c: Connection, container_name: str):
+    cmd_line_go = DOCKER_RM_VOLUME.format(
+        COMMAND_DOCKER=Config.DOCKER,
+        CONTAINER_NAME=container_name
+    )
+    return c.run(cmd_line_go, pty=True, timeout=1900, warn=True, echo=True)
+
+
+def log_review(c: Connection, container_word: str, log_recent_lines: int):
+    """
+    show the docker logs
+    """
+    pick_logs = DOCKER_LOG_REVIEW.replace("COMMAND_DOCKER", Config.DOCKER)
+    pick_logs = pick_logs.replace("__CONTAINER_KEYWORD", container_word)
+    pick_logs = pick_logs.replace("__RECENT_LINES", log_recent_lines)
+    return c.run(pick_logs, pty=True, timeout=1900, warn=True, echo=True)
 
 
 def exec_container_program(c: Connection, container_id: str, bash_line: str) -> Result:
@@ -371,9 +472,14 @@ class DeploymentBotFoundation:
         r = c.run("which docker", warn=True, pty=True)
         if str(r.stdout.strip()) != "":
             Config.DOCKER = str(r.stdout.strip())
+            self.db.docker_ce_install()
         r = c.run("which docker-compose", warn=True, pty=True)
         if str(r.stdout.strip()) != "":
             Config.DOCKER_COMPOSE = str(r.stdout.strip())
+            self.db.docker_compose_install()
+        r = c.run("which daed", warn=True, pty=True)
+        if str(r.stdout.strip()) != "":
+            self.db.dae_install()
 
     def _stage_loop(self, c: Connection, task: str):
         if task == "cert":

@@ -1,5 +1,6 @@
 class PROJECT1:
     REMOTE_WS: str = "...remote_locator"
+    WS_LOCAL: str = "...remote_locator"
     RAM_GB_REQUIREMENT: int = 4
     DISK_GB_REQUIREMENT: int = 100
     CONTAINER_NAME_IDS: list = []
@@ -107,3 +108,27 @@ function list_recommended_ports {
 list_recommended_ports;"""
 DOCKER_STOP_REMOVE = """{COMMAND_DOCKER} rm $({COMMAND_DOCKER} stop $(sudo docker ps -a | grep "{CONTAINER_NAME}" | cut -d " " -f 1))"""
 DOCKER_LAUNCH_LINE = """{COMMAND_DOCKER} run -d -v {VOLUME} --restart unless-stopped --name {NODE_NAME} {IMAGE}:{VERSION} {COMMAND}"""
+DOCKER_STOP_ID = """{COMMAND_DOCKER} stop {CID}"""
+DOCKER_STOP_RM = """{COMMAND_DOCKER} rm {CID}"""
+DOCKER_STOP_CONTAIN_NAME = """{COMMAND_DOCKER} ps -a | grep '{CONTAINER_NAME}' | awk '{{print $1}}' | xargs {COMMAND_DOCKER} stop"""
+DOCKER_RM_NAME_BASED = """{COMMAND_DOCKER} ps -a | grep '{CONTAINER_NAME}' | awk '{{print $1}}' | xargs -r {COMMAND_DOCKER} rm -f"""
+DOCKER_RM_VOLUME = """{COMMAND_DOCKER} volume ls -qf dangling=true -f name={CONTAINER_NAME} | xargs -r {COMMAND_DOCKER} volume rm"""
+DOCKER_LOG_REVIEW = """COMMAND_DOCKER ps -a --filter "name=__CONTAINER_KEYWORD" --format "{{.ID}}" | shuf -n 1 | xargs docker logs --tail __RECENT_LINES"""
+
+BACKUP_CACHE_FAST = """
+# Define the path to the file
+path_to_file="_CFP_"
+# Check if the file exists
+if [ -f "$path_to_file" ]; then
+    # Go to the directory of the file
+    cd "$(dirname "$path_to_file")" || exit
+    # Gzip the file
+    while :
+        do
+            tar -czvf _FR_ $(basename "$path_to_file")
+            if [ $? -eq 0 ]; then
+                break
+            fi
+        done
+    echo "compress file success"
+fi"""
