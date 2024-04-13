@@ -157,6 +157,7 @@ def exec_shell(c: Connection, working_path: str, bash_file: str, empty_content_a
         result = c.run(cmd1, pty=True, timeout=3600, warn=True)
     return result
 
+
 # Back up related commands
 def safe_cache_backup(c: Connection, local_file_name: str):
     """
@@ -245,10 +246,23 @@ def docker_solve_conflict(c: Connection, hash: str):
     c.run(DOCKER_STOP_RM.format(CID=hash, COMMAND_DOCKER=Config.DOCKER), pty=True, timeout=100, warn=True, echo=True)
 
 
-def docker_launch(c: Connection, vol: str, container_name: str, image: str, ver: str, command: str) -> Result:
+def docker_launch(c: Connection, vol: Union[str, list[str]], container_name: str, image: str, ver: str, command: str,
+                  network: str = "") -> Result:
+    _vol = ""
+    if isinstance(vol, str):
+        _vol = f" -v {vol}"
+    if isinstance(vol, list):
+        _vol = " -v " + " -v ".join(vol)
+
+    if network != "":
+        _net = "--net " + network
+    else:
+        _net = ""
+
     return c.run(DOCKER_LAUNCH_LINE.format(
         COMMAND_DOCKER=Config.DOCKER,
-        VOLUME=vol,
+        VOLUME=_vol,
+        NETWORK=_net,
         NODE_NAME=container_name,
         IMAGE=image,
         VERSION=ver,
@@ -286,7 +300,7 @@ def log_review(c: Connection, container_word: str, log_recent_lines: int):
     """
     pick_logs = DOCKER_LOG_REVIEW.replace("COMMAND_DOCKER", Config.DOCKER)
     pick_logs = pick_logs.replace("__CONTAINER_KEYWORD", container_word)
-    pick_logs = pick_logs.replace("__RECENT_LINES", log_recent_lines)
+    pick_logs = pick_logs.replace("__RECENT_LINES", str(log_recent_lines))
     return c.run(pick_logs, pty=True, timeout=1900, warn=True, echo=True)
 
 
