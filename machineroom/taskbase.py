@@ -1,3 +1,5 @@
+import os.path
+
 import pexpect
 from fabric import Connection, Config as FabricConfig, Result
 from machineroom.sql import ServerRoom
@@ -259,13 +261,18 @@ def docker_launch(c: Connection, vol: Union[str, list[str]], container_name: str
     else:
         _net = ""
 
+    if ver == "" or ver is None:
+        _ver = ""
+    else:
+        _ver = f":{ver}"
+
     return c.run(DOCKER_LAUNCH_LINE.format(
         COMMAND_DOCKER=Config.DOCKER,
         VOLUME=_vol,
         NETWORK=_net,
         NODE_NAME=container_name,
         IMAGE=image,
-        VERSION=ver,
+        VERSION=_ver,
         COMMAND=command,
     ), pty=True, timeout=4900, warn=True, echo=True)
 
@@ -408,6 +415,58 @@ def install_docker_compose(c: Connection):
     ))
 
 
+def docker_launch_solution(c: Connection, node_name: str, pass_file: str):
+    print("use container name", node_name)
+    _command_line = f"python main_exe.py {pass_file}"
+    sentence = docker_launch(
+        c=c,
+        container_name=node_name,
+        vol=[
+            "/home/galxeionetapplication/cache:/home/galxe/cache",
+            "/home/clash_docker/config/proxy_config.json:/home/galxe/cache/proxy_config.json"
+        ],
+        image="adriansteward/galxewrok",
+        ver="",
+        command=_command_line
+    )
+    (issue, hash) = docker_is_container_conflict(sentence)
+    if issue:
+        docker_solve_conflict(c, hash)
+        docker_launch_solution(c, node_name, pass_file)
+
+
+def install_clash_network(
+        c: Connection,
+        network_config_file: str,
+        helper_version: str,
+        external_token_access: str,
+        selector: str,
+        tst_endpoint: str
+):
+    # network config is yaml file format
+    docker_file = DOCKER_COMPOSE_XCLASH \
+        .replace("X_CLASH_CONFIG_YAML_NM", network_config_file) \
+        .replace("X_CLASH_GALXE_HELPER_VER", "1.2.1291" if helper_version == "" else helper_version)
+    resrc = CLASH_HELPER_RESOURCE \
+        .replace("___SECRET___", external_token_access) \
+        .replace("___SELECTOR___", selector).replace(
+        "__TEST_ENDPOINT__", tst_endpoint)
+    network_cfg = os.path.join("home", "clashperfectoctopus", "clash_conf", network_config_file)
+    network_cfg_local = os.path.join(Config.DATAPATH_BASE, "clash_config", network_config_file)
+    content = CLASH_SETUP_1 \
+        .replace("_CONTENT_DOCKER_COMPOSE", docker_file) \
+        .replace("_RESOURCE_JSON", resrc)
+    exec_shell_program(c, "/tmp", content)
+    if os.path.isfile(network_cfg_local) is False:
+        print("aborted the network config file is not found from", network_cfg_local)
+        return
+    ensure_path_exist()
+    c.put(network_cfg_local, network_cfg)
+    content2 = CLASH_SETUP_2 \
+        .replace("_PATH_CLASH", network_cfg)
+    exec_shell_program(c, "/tmp", content2)
+
+
 class DeploymentBotFoundation:
     # the text file servers that recorded the authentications and some basic information
     srv: Servers
@@ -539,6 +598,17 @@ class DeploymentBotFoundation:
                     install_dae_proxy(c)
                     self.db.dae_install()
 
+        if task == "clash":
+            if self.db.is_xclash_installed() is False:
+                if check_docker_ps_specific(c, "dreamacro/clash") is False:
+                    print("dreamacro.clash will be installed")
+                    if self.install_xclash(1) is True:
+                        self.db.docker_clash_install()
+            else:
+                if self.install_xclash_update() is True:
+                    if self.install_xclash(2) is True:
+                        print("xclash is updated.")
+
         if task.startswith("yacht"):
             port = task.replace("yacht", "")
             if port == "":
@@ -546,3 +616,11 @@ class DeploymentBotFoundation:
             if self.db.is_docker_yacht_installed() is False:
                 install_container_management_utility(c, int(port))
                 self.db.docker_yacht_install()
+
+    def install_xclash(self, install_times: int) -> bool:
+        # if check_docker_ps_specific(c, "dreamacro/clash") is False:...
+
+        return False
+
+    def install_xclash_update(self) -> bool:
+        return False

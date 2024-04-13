@@ -256,13 +256,18 @@ class ServerRoom(ToolDb):
     def docker_compose_install(self):
         self._update_what_installed("docker_compose_installed")
 
+    def docker_clash_install(self):
+        return self._update_what_installed("clash_installed")
+
     def docker_yacht_install(self):
         self._update_what_installed("yacht_installed")
 
     def python3_install(self):
         self._update_what_installed("python3_installed")
+
     def dae_install(self):
         self._update_what_installed("daed_installed")
+
     def is_docker_compose_installed(self):
         return self._is_what_installed("docker_compose_installed")
 
@@ -271,6 +276,9 @@ class ServerRoom(ToolDb):
 
     def is_dae_installed(self):
         return self._is_what_installed("daed_installed")
+
+    def is_xclash_installed(self):
+        return self._is_what_installed("clash_installed")
 
     def is_docker_ce_installed(self):
         return self._is_what_installed("docker_installed")

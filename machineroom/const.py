@@ -107,14 +107,13 @@ function list_recommended_ports {
 }
 list_recommended_ports;"""
 DOCKER_STOP_REMOVE = """{COMMAND_DOCKER} rm $({COMMAND_DOCKER} stop $(sudo docker ps -a | grep "{CONTAINER_NAME}" | cut -d " " -f 1))"""
-DOCKER_LAUNCH_LINE = """{COMMAND_DOCKER} run -d {VOLUME} {NETWORK} --restart unless-stopped --name {NODE_NAME} {IMAGE}:{VERSION} {COMMAND}"""
+DOCKER_LAUNCH_LINE = """{COMMAND_DOCKER} run -d {VOLUME} {NETWORK} --restart unless-stopped --name {NODE_NAME} {IMAGE}{VERSION} {COMMAND}"""
 DOCKER_STOP_ID = """{COMMAND_DOCKER} stop {CID}"""
 DOCKER_STOP_RM = """{COMMAND_DOCKER} rm {CID}"""
 DOCKER_STOP_CONTAIN_NAME = """{COMMAND_DOCKER} ps -a | grep '{CONTAINER_NAME}' | awk '{{print $1}}' | xargs {COMMAND_DOCKER} stop"""
 DOCKER_RM_NAME_BASED = """{COMMAND_DOCKER} ps -a | grep '{CONTAINER_NAME}' | awk '{{print $1}}' | xargs -r {COMMAND_DOCKER} rm -f"""
 DOCKER_RM_VOLUME = """{COMMAND_DOCKER} volume ls -qf dangling=true -f name={CONTAINER_NAME} | xargs -r {COMMAND_DOCKER} volume rm"""
 DOCKER_LOG_REVIEW = """COMMAND_DOCKER ps -a --filter "name=__CONTAINER_KEYWORD" --format "{{.ID}}" | shuf -n 1 | xargs docker logs --tail __RECENT_LINES"""
-
 BACKUP_CACHE_FAST = """
 # Define the path to the file
 path_to_file="_CFP_"
@@ -132,3 +131,100 @@ if [ -f "$path_to_file" ]; then
         done
     echo "compress file success"
 fi"""
+DOCKER_COMPOSE_XCLASH = """
+version: '3.7'
+services:
+  proxy_service:
+    image: dreamacro/clash
+    container_name: clashmoe
+    ports:
+      - "17890:17890"
+      - "17891:17891"
+    volumes:
+      - ./clash_conf/X_CLASH_CONFIG_YAML_NM:/root/.config/clash/config.yaml:ro
+      - ./clash_conf:/root/.config/clash
+    restart: always
+    # When your system is Linux, you can use `network_mode: "host"` directly.
+    # network_mode: host
+    # clash_docker_default
+    privileged: true
+    expose:
+      - 7890
+      - 7891
+      - 17890
+      - 9090
+    networks:
+      - clsh_octopus_network
+
+  proxy_control_service:
+    image: adriansteward/galxewrok:X_CLASH_GALXE_HELPER_VER
+    container_name: clash_checker
+    restart: "on-failure"
+    command: python clash_runtime.py
+    networks:
+      - clsh_octopus_network
+    depends_on:
+      - proxy_service
+    volumes:
+      - ./config:./cache
+networks:
+  clsh_octopus_network:
+
+
+"""
+CLASH_HELPER_RESOURCE = """{
+  "clash_proxy": {
+    "port": "7890",
+    "secret": "___SECRET___",
+    "conn_file": "/home/clashperfectoctopus/config/proxy_config.json",
+    "selector": "___SELECTOR___",
+    "test_endpoint": "__TEST_ENDPOINT__"
+  }
+}
+"""
+
+CLASH_SETUP_1 = """
+network_name="clsh_octopus_network"
+docker network inspect "$network_name" >/dev/null 2>&1 || docker network create "$network_name"
+
+if [ -d "/home/clashperfectoctopus" ]; then
+  cd /home/clashperfectoctopus
+  git pull https://github.com/ONode/clashperfectoctopus.git
+else
+  echo "Directory does not exist."
+  cd /home
+  git clone https://github.com/ONode/clashperfectoctopus
+  cd clashperfectoctopus
+fi
+
+cat > docker_proxy_compose.yml << 'EOF'
+_CONTENT_DOCKER_COMPOSE
+EOF
+cd /home/clashperfectoctopus/config
+cat > resources.json << 'EOF'
+_RESOURCE_JSON
+EOF
+
+cd /home/clashperfectoctopus
+echo "clean up the containers"
+docker container prune -f
+
+echo "add YAML config file"
+
+
+"""
+CLASH_SETUP_2="""
+configuration_yaml_xsh="_PATH_CLASH"
+
+if [ -f "$configuration_yaml_xsh" ]; then
+    echo "$configuration_yaml_xsh is a file."
+else
+    echo "$configuration_yaml_xsh is not a file."
+    echo "wait until you have the correct configuration file install first."
+    exit;
+fi
+
+echo "start up the service"
+bash clash_up.sh
+
+"""
