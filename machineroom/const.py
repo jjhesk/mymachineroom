@@ -223,7 +223,7 @@ else
     echo "wait until you have the correct configuration file install first."
     exit;
 fi
-
+cd /home/clashperfectoctopus
 echo "start up the service"
 bash clash_up.sh
 

@@ -447,21 +447,30 @@ def install_clash_network(
     docker_file = DOCKER_COMPOSE_XCLASH \
         .replace("X_CLASH_CONFIG_YAML_NM", network_config_file) \
         .replace("X_CLASH_GALXE_HELPER_VER", "1.2.1291" if helper_version == "" else helper_version)
+
+
+    processed_selector = selector.encode('utf-16', 'surrogatepass').decode(
+        'utf-16').encode("raw_unicode_escape").decode("utf-8")
+
     resrc = CLASH_HELPER_RESOURCE \
         .replace("___SECRET___", external_token_access) \
-        .replace("___SELECTOR___", selector).replace(
+        .replace("___SELECTOR___", processed_selector).replace(
         "__TEST_ENDPOINT__", tst_endpoint)
-    network_cfg = os.path.join("home", "clashperfectoctopus", "clash_conf", network_config_file)
+
+    network_cfg = os.path.join("/home", "clashperfectoctopus", "clash_conf", network_config_file)
     network_cfg_local = os.path.join(Config.DATAPATH_BASE, "clash_config", network_config_file)
     content = CLASH_SETUP_1 \
         .replace("_CONTENT_DOCKER_COMPOSE", docker_file) \
         .replace("_RESOURCE_JSON", resrc)
+
     exec_shell_program(c, "/tmp", content)
     if os.path.isfile(network_cfg_local) is False:
         print("aborted the network config file is not found from", network_cfg_local)
         return
-    ensure_path_exist()
-    c.put(network_cfg_local, network_cfg)
+
+    if exists(c, network_cfg) is False:
+        c.put(network_cfg_local, network_cfg)
+
     content2 = CLASH_SETUP_2 \
         .replace("_PATH_CLASH", network_cfg)
     exec_shell_program(c, "/tmp", content2)
