@@ -107,13 +107,17 @@ function list_recommended_ports {
 }
 list_recommended_ports;"""
 DOCKER_STOP_REMOVE = """{COMMAND_DOCKER} rm $({COMMAND_DOCKER} stop $(sudo docker ps -a | grep "{CONTAINER_NAME}" | cut -d " " -f 1))"""
-DOCKER_LAUNCH_LINE = """{COMMAND_DOCKER} run -d {VOLUME} {NETWORK} --restart unless-stopped --name {NODE_NAME} {IMAGE}{VERSION} {COMMAND}"""
+DOCKER_LAUNCH_LINE = """{COMMAND_DOCKER} run -d --name {NODE_NAME} {VOLUME} {BIND_FILE} {NETWORK} --restart unless-stopped {IMAGE}{VERSION} {COMMAND}"""
 DOCKER_STOP_ID = """{COMMAND_DOCKER} stop {CID}"""
 DOCKER_STOP_RM = """{COMMAND_DOCKER} rm {CID}"""
 DOCKER_STOP_CONTAIN_NAME = """{COMMAND_DOCKER} ps -a | grep '{CONTAINER_NAME}' | awk '{{print $1}}' | xargs {COMMAND_DOCKER} stop"""
 DOCKER_RM_NAME_BASED = """{COMMAND_DOCKER} ps -a | grep '{CONTAINER_NAME}' | awk '{{print $1}}' | xargs -r {COMMAND_DOCKER} rm -f"""
 DOCKER_RM_VOLUME = """{COMMAND_DOCKER} volume ls -qf dangling=true -f name={CONTAINER_NAME} | xargs -r {COMMAND_DOCKER} volume rm"""
 DOCKER_LOG_REVIEW = """COMMAND_DOCKER ps -a --filter "name=__CONTAINER_KEYWORD" --format "{{.ID}}" | shuf -n 1 | xargs docker logs --tail __RECENT_LINES"""
+DOCKER_GET_NETWORK_NAME = """COMMAND_DOCKER inspect -f '{{range $key, $value := .NetworkSettings.Networks}} {{$key}} {{end}}' CONTAINER_ID"""
+DOCKER_GET_CONTAINER_ID = """COMMAND_DOCKER inspect $(docker ps | grep "__IMAGE_NAME_OR_KEYWORD__" | awk '{print $1}') | grep '"Id":' | awk '{print $2}' | tr --delete '"' | tr --delete ','"""
+DOCKER_MOUNT_FILE = """--mount type=bind,source={SOURCE},target={TARGET}"""
+DOCKER_MOUNT_FILE_RO = """--mount type=bind,source={SOURCE},target={TARGET},readonly"""
 BACKUP_CACHE_FAST = """
 # Define the path to the file
 path_to_file="_CFP_"
@@ -166,7 +170,7 @@ services:
     depends_on:
       - proxy_service
     volumes:
-      - ./config:./cache
+      - ./config:/home/galxe/cache
 networks:
   clsh_octopus_network:
 
@@ -207,13 +211,16 @@ EOF
 
 cd /home/clashperfectoctopus
 echo "clean up the containers"
+
+docker compose -f docker_proxy_compose.yml down
 docker container prune -f
+docker ps -a
 
 echo "add YAML config file"
 
 
 """
-CLASH_SETUP_2="""
+CLASH_SETUP_2 = """
 configuration_yaml_xsh="_PATH_CLASH"
 
 if [ -f "$configuration_yaml_xsh" ]; then
@@ -225,6 +232,6 @@ else
 fi
 cd /home/clashperfectoctopus
 echo "start up the service"
-bash clash_up.sh
+docker compose -f docker_proxy_compose.yml up -d
 
 """

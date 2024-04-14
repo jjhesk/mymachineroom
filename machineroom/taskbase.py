@@ -48,6 +48,30 @@ def upload_cache_file(c: Connection, cache_file_name: str, if_not_exist: bool = 
         c.put(local_path, remote_path)
 
 
+def upload_cache_file_modify(c: Connection, cache_file_name: str, modifier, if_not_exist: bool = False):
+    remote_path = os.path.join(Config.REMOTE_WS, "cache", cache_file_name)
+    local_path = os.path.join(Config.WS_LOCAL, "cache", cache_file_name)
+    local_mod_path = os.path.join(Config.WS_LOCAL, "cache", "mod_" + cache_file_name)
+
+    if callable(modifier):
+        io = open(local_path, "r")
+        content = io.read()
+        io.close()
+        new_content = modifier(content)
+
+        io = open(local_mod_path, "w")
+        io.write(new_content)
+        io.close()
+
+    if os.path.isfile(local_mod_path):
+        if if_not_exist is True:
+            if exists(c, remote_path) is False:
+                c.put(local_mod_path, remote_path)
+        else:
+            c.put(local_mod_path, remote_path)
+        os.remove(local_mod_path)
+
+
 # https://fabric-zh.readthedocs.io/_/downloads/zh-cn/latest/pdf/
 def detect_cert(c: Connection) -> bool:
     r = c.run("cat ~/.ssh/authorized_keys", warn=True)
@@ -249,7 +273,7 @@ def docker_solve_conflict(c: Connection, hash: str):
 
 
 def docker_launch(c: Connection, vol: Union[str, list[str]], container_name: str, image: str, ver: str, command: str,
-                  network: str = "") -> Result:
+                  network: str = "", bind_file: Union[str, list[str]] = "") -> Result:
     _vol = ""
     if isinstance(vol, str):
         _vol = f" -v {vol}"
@@ -265,6 +289,26 @@ def docker_launch(c: Connection, vol: Union[str, list[str]], container_name: str
         _ver = ""
     else:
         _ver = f":{ver}"
+    _bindf = ""
+    if isinstance(bind_file, str):
+        if bind_file != "":
+            u = bind_file.split(":")
+            if len(u) == 2:
+                _bindf = DOCKER_MOUNT_FILE.format(SOURCE=u[0], TARGET=u[1])
+            if len(u) == 3 and u[2] == "ro":
+                _bindf = DOCKER_MOUNT_FILE_RO.format(SOURCE=u[0], TARGET=u[1])
+
+    if isinstance(bind_file, list):
+        _sl = []
+        for vv in bind_file:
+            u = vv.split(":")
+            mount_statement = ""
+            if len(u) == 2:
+                mount_statement = DOCKER_MOUNT_FILE.format(SOURCE=u[0], TARGET=u[1])
+            if len(u) == 3 and u[2] == "ro":
+                mount_statement = DOCKER_MOUNT_FILE_RO.format(SOURCE=u[0], TARGET=u[1])
+            _sl.append(mount_statement)
+        _bindf = " ".join(_sl)
 
     return c.run(DOCKER_LAUNCH_LINE.format(
         COMMAND_DOCKER=Config.DOCKER,
@@ -274,6 +318,7 @@ def docker_launch(c: Connection, vol: Union[str, list[str]], container_name: str
         IMAGE=image,
         VERSION=_ver,
         COMMAND=command,
+        BIND_FILE=_bindf
     ), pty=True, timeout=4900, warn=True, echo=True)
 
 
@@ -435,6 +480,26 @@ def docker_launch_solution(c: Connection, node_name: str, pass_file: str):
         docker_launch_solution(c, node_name, pass_file)
 
 
+def docker_get_network_name_by_container_id(c: Connection, container_id: str) -> str:
+    content = DOCKER_GET_NETWORK_NAME.replace("COMMAND_DOCKER", Config.DOCKER).replace("CONTAINER_ID", container_id)
+    r = c.run(content, timeout=90, warn=True, hide=True)
+    if r.ok:
+        line = str(r.stdout.strip().replace("\n", ""))
+        return line
+    return ""
+
+
+def docker_get_container_id_by_keyword(c: Connection, keyword: str) -> str:
+    content = DOCKER_GET_CONTAINER_ID.replace("COMMAND_DOCKER", Config.DOCKER).replace("__IMAGE_NAME_OR_KEYWORD__",
+                                                                                       keyword)
+    r = c.run(content, timeout=90)
+    if r.ok:
+        line = str(r.stdout.strip().replace("\n", ""))
+        print(line)
+        return line
+    return ""
+
+
 def install_clash_network(
         c: Connection,
         network_config_file: str,
@@ -447,7 +512,6 @@ def install_clash_network(
     docker_file = DOCKER_COMPOSE_XCLASH \
         .replace("X_CLASH_CONFIG_YAML_NM", network_config_file) \
         .replace("X_CLASH_GALXE_HELPER_VER", "1.2.1291" if helper_version == "" else helper_version)
-
 
     processed_selector = selector.encode('utf-16', 'surrogatepass').decode(
         'utf-16').encode("raw_unicode_escape").decode("utf-8")
