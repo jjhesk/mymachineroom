@@ -159,7 +159,7 @@ def run_local_file(c: Connection, file_name: str) -> Result:
 
 
 def exec_shell_global(c: Connection, _program_: str):
-    return exec_shell_program(c, Config.HOME, _program_)
+    return exec_shell_program(c, Config.SYSTEM_TMP, _program_)
 
 
 def exec_shell_program(c: Connection, remote_path: str, _program_: str) -> Result:
@@ -454,6 +454,11 @@ def install_docker_ce(c: Connection):
     return True
 
 
+def install_docker_25(c: Connection):
+    exec_shell_global(c, DOCKER_CHECK_INSTALL)
+    return True
+
+
 def install_docker_compose(c: Connection):
     exec_shell_global(c, DOCKER_COMPOSE.format(
         DOCKER_COMPOSE_VERSION=Config.DOCKER_COMPOSE_VERSION
@@ -645,8 +650,10 @@ class DeploymentBotFoundation:
                 if detect_program(c, "docker") is False:
                     install_docker_ce(c)
                     self.db.docker_ce_install()
-                else:
                     print("DOCKER is installed")
+                else:
+                    install_docker_25(c)
+                    self.db.docker_ce_install()
 
         if task == "docker-compose":
             if self.db.is_docker_compose_installed() is False:

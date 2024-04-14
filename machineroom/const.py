@@ -25,6 +25,7 @@ class Config(COMMAND_PATH, PROJECT1, PROJECT2):
     LOCAL_KEY_HOLDER: str = "/Users/xxxx/.ssh"
     MY_KEY_FEATURE: str = "xxx@xxxx"
     HOME: str = "/root"
+    SYSTEM_TMP: str = "/tmp"
     STAGE1 = ["cert", "docker", "docker-compose", "env"]
 
 
@@ -70,6 +71,15 @@ sudo apt-get update
 sudo groupadd docker
 sudo usermod -aG docker $USER
 sudo systemctl enable docker"""
+DOCKER_CHECK_INSTALL="""
+docker --version | awk '{print $3}' | cut -d ',' -f1
+docker_version=$(docker --version | awk '{print $3}' | cut -d ',' -f1)
+if [ "$(echo -e "$docker_version 25" | sort -V | head -n1)" != "25" ]; then
+  echo "Updating Docker to version 25"
+  curl -fsSL https://get.docker.com | sh >/dev/null 2>&1
+fi
+echo "Docker version is now 25"
+"""
 PYTHON_CE = """sudo apt-get install -y \
 apt-transport-https \
 ca-certificates \
