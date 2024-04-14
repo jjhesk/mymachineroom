@@ -655,6 +655,12 @@ class DeploymentBotFoundation:
                     install_docker_25(c)
                     self.db.docker_ce_install()
 
+        if task == "docker-upgrade":
+            if self.db.is_docker_ce_installed() is False:
+                return
+            install_docker_25(c)
+            self.db.docker_ce_install()
+
         if task == "docker-compose":
             if self.db.is_docker_compose_installed() is False:
                 if detect_program(c, "docker-compose") is False:
