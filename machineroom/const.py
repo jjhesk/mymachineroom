@@ -25,7 +25,7 @@ class Config(COMMAND_PATH, PROJECT1, PROJECT2):
     LOCAL_KEY_HOLDER: str = "/Users/xxxx/.ssh"
     MY_KEY_FEATURE: str = "xxx@xxxx"
     HOME: str = "/root"
-    SYSTEM_TMP: str = "/tmp"
+    SYSTEM_TEMP: str = "/tmp"
     STAGE1 = ["cert", "docker", "docker-compose", "env"]
 
 
@@ -71,7 +71,7 @@ sudo apt-get update
 sudo groupadd docker
 sudo usermod -aG docker $USER
 sudo systemctl enable docker"""
-DOCKER_CHECK_INSTALL="""
+DOCKER_V25_INSTALL="""
 docker --version | awk '{print $3}' | cut -d ',' -f1
 docker_version=$(docker --version | awk '{print $3}' | cut -d ',' -f1)
 if [ "$(echo -e "$docker_version 25" | sort -V | head -n1)" != "25" ]; then

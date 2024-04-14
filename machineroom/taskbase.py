@@ -159,7 +159,7 @@ def run_local_file(c: Connection, file_name: str) -> Result:
 
 
 def exec_shell_global(c: Connection, _program_: str):
-    return exec_shell_program(c, Config.SYSTEM_TMP, _program_)
+    return exec_shell_program(c, Config.SYSTEM_TEMP, _program_)
 
 
 def exec_shell_program(c: Connection, remote_path: str, _program_: str) -> Result:
@@ -450,12 +450,12 @@ def install_python(c: Connection):
 
 
 def install_docker_ce(c: Connection):
-    exec_shell_global(c, DOCKER_CE_INSTALL)
+    exec_shell_global(c, DOCKER_V25_INSTALL)
     return True
 
 
 def install_docker_25(c: Connection):
-    exec_shell_global(c, DOCKER_CHECK_INSTALL)
+    exec_shell_global(c, DOCKER_V25_INSTALL)
     return True
 
 
@@ -471,10 +471,7 @@ def docker_launch_solution(c: Connection, node_name: str, pass_file: str):
     sentence = docker_launch(
         c=c,
         container_name=node_name,
-        vol=[
-            "/home/galxeionetapplication/cache:/home/galxe/cache",
-            "/home/clash_docker/config/proxy_config.json:/home/galxe/cache/proxy_config.json"
-        ],
+        vol="/home/galxeionetapplication/cache:/home/galxe/cache",
         image="adriansteward/galxewrok",
         ver="",
         command=_command_line
@@ -489,19 +486,16 @@ def docker_get_network_name_by_container_id(c: Connection, container_id: str) ->
     content = DOCKER_GET_NETWORK_NAME.replace("COMMAND_DOCKER", Config.DOCKER).replace("CONTAINER_ID", container_id)
     r = c.run(content, timeout=90, warn=True, hide=True)
     if r.ok:
-        line = str(r.stdout.strip().replace("\n", ""))
-        return line
+        return str(r.stdout.strip().replace("\n", ""))
     return ""
 
 
 def docker_get_container_id_by_keyword(c: Connection, keyword: str) -> str:
     content = DOCKER_GET_CONTAINER_ID.replace("COMMAND_DOCKER", Config.DOCKER).replace("__IMAGE_NAME_OR_KEYWORD__",
                                                                                        keyword)
-    r = c.run(content, timeout=90)
+    r = c.run(content, timeout=90, warn=True, hide=True)
     if r.ok:
-        line = str(r.stdout.strip().replace("\n", ""))
-        print(line)
-        return line
+        return str(r.stdout.strip().replace("\n", ""))
     return ""
 
 
@@ -650,25 +644,10 @@ class DeploymentBotFoundation:
                 if detect_program(c, "docker") is False:
                     install_docker_ce(c)
                     self.db.docker_ce_install()
+                else:
                     print("DOCKER is installed")
-                else:
-                    install_docker_25(c)
-                    self.db.docker_ce_install()
-
-        if task == "docker-upgrade":
-            if self.db.is_docker_ce_installed() is False:
-                return
-            install_docker_25(c)
-            self.db.docker_ce_install()
-
-        if task == "docker-compose":
-            if self.db.is_docker_compose_installed() is False:
-                if detect_program(c, "docker-compose") is False:
-                    install_docker_compose(c)
-                    self.db.docker_compose_install()
-                else:
-                    print("DOCKER COMPOSE is installed")
-                    check_no_permission(c)
+            else:
+                install_docker_ce(c)
 
         if task == "python":
             if self.db.is_python_installed() is False:
