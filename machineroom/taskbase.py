@@ -3,6 +3,7 @@ import os.path
 import pexpect
 from fabric import Connection, Config as FabricConfig, Result
 from machineroom.sql import ServerRoom
+from machineroom.tunnels import conn
 from machineroom.util import *
 
 
@@ -272,6 +273,61 @@ def docker_solve_conflict(c: Connection, hash: str):
     c.run(DOCKER_STOP_RM.format(CID=hash, COMMAND_DOCKER=Config.DOCKER), pty=True, timeout=100, warn=True, echo=True)
 
 
+def docker_get_container_ids_by_keyword(c: Connection, keyword: str) -> list:
+    command = '__DOCKER__ ps -aqf "name=^______"'.replace('______', keyword).replace('__DOCKER__', Config.DOCKER)
+    r = c.run(command, pty=True, timeout=1900, hide=True, warn=True, echo=False)
+    reblock = r.stdout.replace("\r", "")
+    ids = reblock.split('\n')
+    container__ids = []
+    for container__id in ids:
+        if container__id != '':
+            container__ids.append(container__id)
+    container__ids = list(set(container__ids))
+    return container__ids
+
+
+def docker_read_console_result():
+    io = open(os.path.join(Config.DATAPATH_BASE, 'command_prompt_tmp'), 'r')
+    content = io.read()
+    io.close()
+    return json.loads(content)
+
+
+def docker_save_console_result(r):
+    content = r.stdout
+    io = open(os.path.join(Config.DATAPATH_BASE, 'command_prompt_tmp'), 'w')
+    io.write(content)
+    io.close()
+
+
+def docker_inspect_file(c: Connection, container_id: str):
+    command = f'docker inspect {container_id}'
+    r = c.run(command, pty=True, timeout=1900, hide=True, warn=True, echo=False)
+    docker_save_console_result(r)
+    return docker_read_console_result()
+
+
+def docker_restart_containers(c: Connection, contain_ids, result_line=None):
+    if isinstance(contain_ids, list):
+        for id in contain_ids:
+            rv = c.run(
+                f"{Config.DOCKER} restart {id}",
+                pty=True, timeout=1900, warn=True, echo=True
+            )
+            if callable(result_line):
+                line = str(rv.stdout.strip().replace("\n", "")).lower()
+                result_line(line, id)
+
+    if isinstance(contain_ids, str):
+        rv = c.run(
+            f"{Config.DOCKER} restart {contain_ids}",
+            pty=True, timeout=1900, warn=True, echo=True
+        )
+        if callable(result_line):
+            line = str(rv.stdout.strip().replace("\n", "")).lower()
+            result_line(line, contain_ids)
+
+
 def docker_launch(c: Connection, vol: Union[str, list[str]], container_name: str, image: str, ver: str, command: str,
                   network: str = "", bind_file: Union[str, list[str]] = "") -> Result:
     _vol = ""
@@ -318,7 +374,8 @@ def docker_launch(c: Connection, vol: Union[str, list[str]], container_name: str
         IMAGE=image,
         VERSION=_ver,
         COMMAND=command,
-        BIND_FILE=_bindf
+        BIND_FILE=_bindf,
+        LOG_POLICY=Config.DOCKER_LOG_POLICY
     ), pty=True, timeout=4900, warn=True, echo=True)
 
 
@@ -328,6 +385,11 @@ def stop_container_by_name(c: Connection, container_name: str):
         CONTAINER_NAME=container_name
     )
     return c.run(cmd_line_go, pty=True, timeout=1900, warn=True, echo=True)
+
+
+def docker_stop_by_prefix(c: Connection, word: str):
+    service = """docker stop $(docker ps | grep "KEY_WORD" | cut -d " " -f1)""".replace('KEY_WORD', word)
+    c.run(service, pty=True, timeout=1900, warn=True, echo=True)
 
 
 def rm_container_by_name(c: Connection, container_name: str):
@@ -445,6 +507,10 @@ def install_dae_proxy(c: Connection):
     return c.run(INSTALL_DAED, pty=True, timeout=900, warn=True)
 
 
+def install_watch_tower(c: Connection):
+    return c.run(INSTALL_WATCH_TOWER, pty=True, timeout=2900, warn=True)
+
+
 def install_python(c: Connection):
     return c.run(PYTHON_CE, warn=True)
 
@@ -544,10 +610,16 @@ class DeploymentBotFoundation:
     srv: Servers
     # the local db connection of servers
     db: ServerRoom
+    start_server_from: int
+    stop_server_at: int
+    start_server_in_list: list[int]
 
     def __init__(self, server_room: str):
         # the server room file, usually "xxxx_server_room.txt", located under cache folder.
         self.srv = Servers(server_room)
+        self.start_server_from = 0
+        self.stop_server_at = self.srv.serv_count - 1
+        self.start_server_in_list = []
         self.srv.detect_servers()
 
     def _config(self) -> FabricConfig:
@@ -558,6 +630,16 @@ class DeploymentBotFoundation:
                 ],
             },
         })
+
+    def run_tunnel_detection(self):
+        if self.srv.tunnel_type == TunnelType.NO_TUNNEL:
+            return
+        conn.use_macos_vpn_on(self.srv.profile_name)
+
+    def run_tunnel_detection_off(self):
+        if self.srv.tunnel_type == TunnelType.NO_TUNNEL:
+            return
+        conn.use_macos_vpn_off(self.srv.profile_name)
 
     def _est_connection(self) -> Connection:
         if self.db.has_this_server() is False:
@@ -602,11 +684,18 @@ class DeploymentBotFoundation:
             self.connection_err(e, fail_exit)
             return True
 
+    def stage_0(self):
+        if self.srv.tunnel_type == TunnelType.NO_TUNNEL:
+            self.db.tipping_point(
+                self.srv.current_user, self.srv.current_id,
+                self.srv.current_host, self.srv.current_pass
+            )
+        else:
+            self.db.tipping_point_tunnel(
+                self.srv.profile_name, self.srv.current_user, self.srv.current_id,
+                self.srv.current_host, self.srv.current_pass)
+
     def stage_1(self, c: Connection):
-        self.db.tipping_point(
-            self.srv.current_user, self.srv.current_id,
-            self.srv.current_host, self.srv.current_pass
-        )
         for key in Config.STAGE1:
             self._stage_loop(c, key)
 
@@ -662,6 +751,13 @@ class DeploymentBotFoundation:
                     print("daed will be installed")
                     install_dae_proxy(c)
                     self.db.dae_install()
+
+        if task == "watchtower":
+            if self.db.is_watchtower_installed() is False:
+                if check_docker_ps_specific(c, "containrrr/watchtower") is False:
+                    print("watchtower will be installed - the automatic updates of the docker container")
+                    install_watch_tower(c)
+                    self.db.watchtower_install()
 
         if task == "clash":
             if self.db.is_xclash_installed() is False:

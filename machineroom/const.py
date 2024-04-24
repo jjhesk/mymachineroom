@@ -1,3 +1,6 @@
+from enum import Enum
+
+
 class PROJECT1:
     REMOTE_WS: str = "...remote_locator"
     WS_LOCAL: str = "...remote_locator"
@@ -17,16 +20,35 @@ class COMMAND_PATH:
     DOCKER = "/usr/bin/docker"
 
 
-class Config(COMMAND_PATH, PROJECT1, PROJECT2):
-    DATAPATH_BASE: str = "...._file....locator"
-    TEMP_FILE: str = "tmp.txt"
-    TEMP_JS: str = "tmp.js"
-    PUB_KEY: str = "/Users/xxxx/.ssh/id_rsa.pub"
-    LOCAL_KEY_HOLDER: str = "/Users/xxxx/.ssh"
-    MY_KEY_FEATURE: str = "xxx@xxxx"
-    HOME: str = "/root"
-    SYSTEM_TEMP: str = "/tmp"
-    STAGE1 = ["cert", "docker", "docker-compose", "env"]
+class TunnelType(Enum):
+    NO_TUNNEL = 0
+    L2TP_IPSEC = 1
+    CISCO_IPSEC = 2
+    IKEV2 = 3
+    SSTP = 4
+    DAE = 5
+    IPVANISH = 6
+    PPTP = 7
+    WIREGUARD = 8
+
+    @classmethod
+    def Recongize(cls, what:str):
+        what = what.lower()
+        if "l2tp/ipsec" in what:
+            return cls.L2TP_IPSEC
+
+        elif "cisco/ipsec" in what:
+            return cls.CISCO_IPSEC
+
+        elif "ikv2" in what:
+            return cls.IKEV2
+
+        else:
+            return cls.NO_TUNNEL
+
+    @classmethod
+    def from_date(cls, date):
+        return cls(date.isoweekday())
 
 
 DETECT_PROCESS = 'ps aux | grep -sie "{COMMAND_NAME}" | grep -v "grep -sie"'
@@ -71,7 +93,7 @@ sudo apt-get update
 sudo groupadd docker
 sudo usermod -aG docker $USER
 sudo systemctl enable docker"""
-DOCKER_V25_INSTALL="""
+DOCKER_V25_INSTALL = """
 docker --version | awk '{print $3}' | cut -d ',' -f1
 docker_version=$(docker --version | awk '{print $3}' | cut -d ',' -f1)
 if [ "$(echo -e "$docker_version 25" | sort -V | head -n1)" != "25" ]; then
@@ -96,6 +118,7 @@ sudo systemctl enable daed
 sudo systemctl start daed
 sudo systemctl status daed
 """
+INSTALL_WATCH_TOWER = "docker run -d --name watchtower -v /var/run/docker.sock:/var/run/docker.sock containrrr/watchtower"
 PORT_DETECTION = """
 # 检测并罗列未被占用的端口
 function list_recommended_ports {
@@ -117,7 +140,7 @@ function list_recommended_ports {
 }
 list_recommended_ports;"""
 DOCKER_STOP_REMOVE = """{COMMAND_DOCKER} rm $({COMMAND_DOCKER} stop $(sudo docker ps -a | grep "{CONTAINER_NAME}" | cut -d " " -f 1))"""
-DOCKER_LAUNCH_LINE = """{COMMAND_DOCKER} run -d --name {NODE_NAME} {VOLUME} {BIND_FILE} {NETWORK} --restart unless-stopped {IMAGE}{VERSION} {COMMAND}"""
+DOCKER_LAUNCH_LINE = """{COMMAND_DOCKER} run -d --name {NODE_NAME} {VOLUME} {BIND_FILE} {NETWORK} --restart unless-stopped {LOG_POLICY} {IMAGE}{VERSION} {COMMAND}"""
 DOCKER_STOP_ID = """{COMMAND_DOCKER} stop {CID}"""
 DOCKER_STOP_RM = """{COMMAND_DOCKER} rm {CID}"""
 DOCKER_STOP_CONTAIN_NAME = """{COMMAND_DOCKER} ps -a | grep '{CONTAINER_NAME}' | awk '{{print $1}}' | xargs {COMMAND_DOCKER} stop"""
@@ -128,6 +151,8 @@ DOCKER_GET_NETWORK_NAME = """COMMAND_DOCKER inspect -f '{{range $key, $value := 
 DOCKER_GET_CONTAINER_ID = """COMMAND_DOCKER inspect $(docker ps | grep "__IMAGE_NAME_OR_KEYWORD__" | awk '{print $1}') | grep '"Id":' | awk '{print $2}' | tr --delete '"' | tr --delete ','"""
 DOCKER_MOUNT_FILE = """--mount type=bind,source={SOURCE},target={TARGET}"""
 DOCKER_MOUNT_FILE_RO = """--mount type=bind,source={SOURCE},target={TARGET},readonly"""
+DOCKER_LOG_POLICY_10m_5f = "--log-opt max-size=10m --log-opt max-file=5"
+DOCKER_LOG_POLICY_5m_10f = "--log-opt max-size=5m --log-opt max-file=10"
 BACKUP_CACHE_FAST = """
 # Define the path to the file
 path_to_file="_CFP_"
@@ -146,7 +171,7 @@ if [ -f "$path_to_file" ]; then
     echo "compress file success"
 fi"""
 DOCKER_COMPOSE_XCLASH = """
-version: '3.7'
+version: '3.8'
 services:
   proxy_service:
     image: dreamacro/clash
@@ -168,7 +193,7 @@ services:
       - 17890
       - 9090
     networks:
-      - clsh_octopus_network
+      - octopus_dot
 
   proxy_control_service:
     image: adriansteward/galxewrok:X_CLASH_GALXE_HELPER_VER
@@ -176,13 +201,13 @@ services:
     restart: "on-failure"
     command: python clash_runtime.py
     networks:
-      - clsh_octopus_network
+      - octopus_dot
     depends_on:
       - proxy_service
     volumes:
       - ./config:/home/galxe/cache
 networks:
-  clsh_octopus_network:
+  octopus_dot:
 
 
 """
@@ -198,7 +223,7 @@ CLASH_HELPER_RESOURCE = """{
 """
 
 CLASH_SETUP_1 = """
-network_name="clsh_octopus_network"
+network_name="octopus_dot"
 docker network inspect "$network_name" >/dev/null 2>&1 || docker network create "$network_name"
 
 if [ -d "/home/clashperfectoctopus" ]; then
@@ -245,3 +270,16 @@ echo "start up the service"
 docker compose -f docker_proxy_compose.yml up -d
 
 """
+
+
+class Config(COMMAND_PATH, PROJECT1, PROJECT2):
+    DATAPATH_BASE: str = "...._file....locator"
+    TEMP_FILE: str = "tmp.txt"
+    TEMP_JS: str = "tmp.js"
+    PUB_KEY: str = "/Users/xxxx/.ssh/id_rsa.pub"
+    LOCAL_KEY_HOLDER: str = "/Users/xxxx/.ssh"
+    MY_KEY_FEATURE: str = "xxx@xxxx"
+    HOME: str = "/root"
+    SYSTEM_TEMP: str = "/tmp"
+    STAGE1 = ["cert", "docker", "env"]
+    DOCKER_LOG_POLICY: str = DOCKER_LOG_POLICY_10m_5f

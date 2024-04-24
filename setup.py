@@ -21,11 +21,12 @@ import platform
 
 from setuptools import find_packages
 from setuptools import setup
+import pypandoc
 
 
 def find_version() -> str:
     f = codecs.open('version', 'r', 'utf-8-sig')
-    new_ver = f.readline().strip()
+    new_ver = f.readline().strip().replace("\n", "")
     f.close()
     edit_at_line(new_ver)
     return new_ver
@@ -49,9 +50,6 @@ def edit_at_line(version: str):
             f.close()
 
 
-with open('README.md', 'r') as f:
-    long_description = f.read()
-
 _dir = os.path.dirname(__file__)
 py_version = platform.python_version()
 
@@ -59,7 +57,7 @@ setup(
     name='machineroom',
     packages=find_packages(),
     description='A Python package to manage all my machines in the fingertip.',
-    long_description=long_description,
+    long_description=pypandoc.convert_file(os.path.join('README.md'), 'rst'),
     long_description_content_type='text/markdown',
     include_package_data=False,
     package_data={'': ['*.json']},
@@ -69,7 +67,9 @@ setup(
     version=find_version(),
     license='MIT',
     keywords='ssh machine room',
-    install_requires=[],
+    install_requires=[
+        'SQLiteAsJSON', 'fabric', 'pexpect',
+    ],
     # py_modules=['bin/connect'],
     python_requires='>=3.8,<4',
     classifiers=[
@@ -84,7 +84,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            #      'connect = mymachine.cmdbin:cli',
+            # 'connect = mymachine.cmdbin:cli',
         ],
     },
 )

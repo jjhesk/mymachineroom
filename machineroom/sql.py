@@ -277,6 +277,12 @@ class ServerRoom(ToolDb):
     def is_dae_installed(self):
         return self._is_what_installed("daed_installed")
 
+    def is_watchtower_installed(self):
+        return self._is_what_installed("watchtower_installed")
+
+    def watchtower_install(self):
+        self._update_what_installed("watchtower_installed")
+
     def is_xclash_installed(self):
         return self._is_what_installed("clash_installed")
 
@@ -343,9 +349,18 @@ class ServerRoom(ToolDb):
     def set_server_id(self, server_id: str):
         self.server_id = server_id
 
-    def update_profile(self, profile_res: dict):
+    def update_tunel_profile(self, profile_name: str):
+        self.update_res_kv("tunnel_profile", profile_name)
+
+    def update_res_kv(self, k: str, val):
         da = self.get_member_res(self._tblembr, self.server_id)
-        da.update({"profile": profile_res})
+        da.update({k: val})
+        self._update_server_meta(self.server_id, da)
+
+    def delete_res_kv(self, k: str):
+        da = self.get_member_res(self._tblembr, self.server_id)
+        if k in da:
+            da.pop(k)
         self._update_server_meta(self.server_id, da)
 
     def get_home_path(self) -> str:
@@ -375,6 +390,21 @@ class ServerRoom(ToolDb):
             # first time registration
             self._insert_server(host, id, password, user, port, {})
         else:
+            # update when the new data is found. but the ID cannot be updated.
+            p = {
+                "host": host,
+                "user": user,
+                "pass": password,
+                "port": port,
+            }
+            return self.update_param(self.server_id, p)
+
+    def tipping_point_tunnel(self, profile_tunnel: str, user: str, id: str, host: str, password: str, port: int = 22):
+        if self.has_this_server() is False:
+            # first time registration
+            self._insert_server(host, id, password, user, port, {"tunnel_profile": profile_tunnel})
+        else:
+            self.update_res_kv("tunnel_profile", profile_tunnel)
             # update when the new data is found. but the ID cannot be updated.
             p = {
                 "host": host,

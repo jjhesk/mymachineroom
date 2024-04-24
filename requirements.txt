@@ -1,0 +1,5 @@
+SQLiteAsJSON==1.0.4
+regex==2023.12.25
+fabric==3.2.2
+pexpect==4.9.0
+requests==2.31.0

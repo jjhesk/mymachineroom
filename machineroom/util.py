@@ -391,6 +391,10 @@ class NodeCountIsNotInPlan(Exception):
     ...
 
 
+class FoundVPNTunnel(Exception):
+    ...
+
+
 class Servers:
     _meta_file: str
     current_id: str
@@ -399,11 +403,17 @@ class Servers:
     current_pass: str
     _srv_index: int
     _meta_file: int
+    _tunnel_type: TunnelType
+    profile_name: str
+    _on_detect: bool
 
     def __init__(self, file: str):
         self._meta_file = file
         self.serv_count = 20
+        self._tunnel_type = TunnelType.NO_TUNNEL
+        self.profile_name = ""
         self._srv_index = 0
+        self._on_detect = True
 
     @property
     def path_file(self) -> str:
@@ -413,9 +423,17 @@ class Servers:
     def at_server(self) -> int:
         return self._srv_index
 
+    @property
+    def tunnel_type(self) -> TunnelType:
+        return self._tunnel_type
+
     def detect_servers(self):
         self.serv_count = read_file_total_lines(self.path_file)
-        self.read_serv_at(0)
+        try:
+            self.read_serv_at(0)
+            self._on_detect = False
+        except FoundVPNTunnel:
+            self.serv_count -= 1
 
     def read_serv_at(self, index: int) -> dict:
         n = index % self.serv_count
@@ -434,6 +452,13 @@ class Servers:
             raise ServerAuthInfoErr()
 
         self._srv_index = n
+        if index == 0 and "#" in line[0]:
+            VPN_TUNNEL = line[1]
+            print(f"Detected tunnel for machine group {line[0]} using {VPN_TUNNEL}")
+            self._tunnel_type = TunnelType.Recongize(VPN_TUNNEL)
+            self.profile_name = line[0].replace("#", "")
+            raise FoundVPNTunnel()
+
         tmp = {
             "id": line[0],
             "ip": line[1],
@@ -444,11 +469,12 @@ class Servers:
         self.current_host = line[1]
         self.current_user = line[2]
         self.current_pass = line[3]
-        print(f"## ☎️ Now enter network ID#{n}: {line[0]} {line[1]}")
+        if self._on_detect is False:
+            print(f"## ☎️ Now enter network ID#{n}: {line[0]} {line[1]}")
         return tmp
 
-    def use_next_node(self) -> dict:
-        self._srv_index = self._srv_index + 1
+    def use_next_node(self, x: int = 1) -> dict:
+        self._srv_index = self._srv_index + x
         return self.read_serv_at(self._srv_index)
 
 
