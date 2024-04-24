@@ -16,13 +16,13 @@ execute_path = os.path.dirname(__file__)
 class ServerDoorJob(Infra1):
 
     def action_import(self):
-        self.__run_connect()
+        self.run_conn()
 
     def action_retire(self):
-        self.__run_offline(self._retire_on_each_server)
+        self.run_offline(self._retire_on_each_server)
 
     def action_off_cert(self):
-        self.__run_offline(self._action_off_cert)
+        self.run_offline(self._action_off_cert)
 
     def _retire_on_each_server(self):
         self.db.update_res_kv("retired", True)
@@ -36,7 +36,7 @@ class ServerDoorJob(Infra1):
                 tb.copy_id(x, pubkey_path)
                 self.db.update_res_kv(f"custom_cert_{name}", True)
 
-        self.__run_connect(add_certification)
+        self.run_conn(add_certification)
 
 
 def internal_work():

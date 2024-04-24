@@ -17,7 +17,7 @@ class Infra1(tb.DeploymentBotFoundation):
         super().__init__(x)
         self.db = ServerRoom()
 
-    def __run_connect(self, callback_x=None):
+    def run_conn(self, callback_x=None):
         k = self.start_server_from
         if self.srv.serv_count < k:
             print("cannot start from out of range server number")
@@ -44,7 +44,7 @@ class Infra1(tb.DeploymentBotFoundation):
             k += 1
         self.run_tunnel_detection_off()
 
-    def __run_offline(self, call_job=None):
+    def run_offline(self, call_job=None):
         k = self.start_server_from
         if self.srv.serv_count < k:
             print("cannot start from out of range server number")
