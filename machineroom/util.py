@@ -16,9 +16,9 @@ CMD_LIST2 = ["scan", "check", "validation", "valid"]
 
 
 def use_args() -> Tuple[str, str, str]:
-    opt1 = None
-    opt2 = None
-    opt3 = None
+    opt1 = ""
+    opt2 = ""
+    opt3 = ""
     cmd = "ls"
 
     if len(sys.argv) >= 2:

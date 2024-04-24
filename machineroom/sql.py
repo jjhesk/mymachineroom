@@ -135,14 +135,13 @@ class ToolDb(ManageDB):
         cursor = self.conn.cursor()
         _da = {}
         try:
-            cursor.execute(f'SELECT res FROM {tbl} WHERE id = ?',
-                           (server_id,))
+            cursor.execute(f'SELECT res FROM {tbl} WHERE id = ?', (server_id,))
             (res_01,) = cursor.fetchone()
             _da = json.loads(res_01)
         except json.JSONDecodeError as e:
             db_logger.error(e)
         except Exception as E:
-            db_logger.error('Data Insert Error : ', E)
+            db_logger.warn('Data READ:', E)
         return _da
 
     def get_host_info(self, tbl: str, server_id: str) -> Tuple[str, str, int]:
@@ -334,11 +333,16 @@ class ServerRoom(ToolDb):
         return self.insert_new(p)
 
     def get_res_kv(self, k: str):
-        da = self.get_member_res(self._tblembr, self.server_id)
-        if k in da:
-            return da[k]
-        else:
+        try:
+            da = self.get_member_res(self._tblembr, self.server_id)
+            if k in da:
+                return da[k]
+            else:
+                return ""
+        except TypeError:
             return ""
+        except Exception:
+            return ''
 
     def total_count(self, tbl: str) -> int:
         cursor = self.conn.cursor()

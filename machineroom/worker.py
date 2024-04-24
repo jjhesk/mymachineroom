@@ -50,10 +50,12 @@ def internal_work():
         print("Here is my machine room...")
         gh = local.show_all_serv()
         for (id, host, res) in gh:
+            local.set_server_id(id)
             y = FieldConstruct()
             y.add_icon(f"{id}  -> {host}     ")
-            if local.get_tunnel_profile() != "":
-                y.add_icon(f"TUNNEL PROFILE: {local.get_tunnel_profile()}")
+            tun = local.get_tunnel_profile()
+            if tun != "":
+                y.add_icon(f"TUNNEL PROFILE: {tun}")
             y.add_icon("EXPIRED" if local.is_what_installed_full("retire", id) else "")
             y.add_icon("CERT" if local.is_what_installed_full("identity_cert_installed", id) else "")
             y.add_icon("DOCKER" if local.is_what_installed_full("docker_compose_installed", id) else "")
