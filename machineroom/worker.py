@@ -1,6 +1,7 @@
 import os
 
 from machineroom import taskbase as tb
+from machineroom.tunnels.conn import *
 
 try:
     import SQLiteAsJSON
@@ -87,7 +88,7 @@ def internal_work():
     This is the cmd console use functions
     alpha stage now.
     """
-    (a, b) = use_args()
+    (a, b, c) = use_args()
     local = ServerRoom()
     if a == "ls":
         print("Here is my machine room...")
@@ -95,6 +96,8 @@ def internal_work():
         for (id, host, res) in gh:
             y = FieldConstruct()
             y.add_icon(f"{id}  -> {host}     ")
+            if local.get_tunnel_profile() != "":
+                y.add_icon(f"TUNNEL PROFILE: {local.get_tunnel_profile()}")
             y.add_icon("EXPIRED" if local.is_what_installed_full("retire", id) else "")
             y.add_icon("CERT" if local.is_what_installed_full("identity_cert_installed", id) else "")
             y.add_icon("DOCKER" if local.is_what_installed_full("docker_compose_installed", id) else "")
@@ -130,7 +133,6 @@ def internal_work():
             print("Wrong path cannot open this file")
         job = ServerDoorJob(b)
         job.action_add_custom_cert("BLK_LOCAL", "/Users/hesdx/.ssh/blsp1.pub")
-
     elif a != None:
         local.set_server_id(a)
         if local.has_this_server() is False:
@@ -140,6 +142,9 @@ def internal_work():
         port_sentence = "" if p == 22 else f"-p {p} "
         home_path = local.get_home_path()
         home_path = f'"cd {home_path}; bash"' if home_path != "" else ''
+        if local.get_tunnel_profile() != "":
+            print("TUNNEL PROFILE: {local.get_tunnel_profile()}")
+            use_macos_vpn_on(local.get_tunnel_profile())
         os.system(f'ssh {port_sentence}-i {cert} -t {u}@{h} {home_path}')
     else:
         err_exit("cannot serv no args")

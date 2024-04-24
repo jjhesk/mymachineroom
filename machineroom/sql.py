@@ -333,6 +333,13 @@ class ServerRoom(ToolDb):
         }
         return self.insert_new(p)
 
+    def get_res_kv(self, k: str):
+        da = self.get_member_res(self._tblembr, self.server_id)
+        if k in da:
+            return da[k]
+        else:
+            return ""
+
     def total_count(self, tbl: str) -> int:
         cursor = self.conn.cursor()
         cursor.execute(f"SELECT COUNT(*) as count FROM {tbl}")
@@ -364,11 +371,10 @@ class ServerRoom(ToolDb):
         self._update_server_meta(self.server_id, da)
 
     def get_home_path(self) -> str:
-        da = self.get_member_res(self._tblembr, self.server_id)
-        if "home_path" in da:
-            return da["home_path"]
-        else:
-            return ""
+        return self.get_res_kv("home_path")
+
+    def get_tunnel_profile(self):
+        return self.get_res_kv("tunnel_profile")
 
     def _update_what_installed(self, program_key: str):
         da = self.get_member_res(self._tblembr, self.server_id)

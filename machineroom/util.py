@@ -15,15 +15,18 @@ CMD_LIST1 = ["ls", "show", "list", "tell"]
 CMD_LIST2 = ["scan", "check", "validation", "valid"]
 
 
-def use_args() -> Tuple[str, str]:
+def use_args() -> Tuple[str, str, str]:
     opt1 = None
     opt2 = None
+    opt3 = None
     cmd = "ls"
 
     if len(sys.argv) >= 2:
         opt1 = sys.argv[1]
         if len(sys.argv) >= 3:
             opt2 = sys.argv[2]
+            if len(sys.argv) >= 4:
+                opt3 = sys.argv[3]
 
     if opt1 in CMD_LIST1:
         cmd = "ls"
@@ -32,7 +35,7 @@ def use_args() -> Tuple[str, str]:
     else:
         cmd = opt1
 
-    return cmd, opt2
+    return cmd, opt2, opt3
 
 
 def err_exit(msg: str):
