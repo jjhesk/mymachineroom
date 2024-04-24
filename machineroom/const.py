@@ -97,7 +97,7 @@ DOCKER_V25_INSTALL = """
 docker --version | awk '{print $3}' | cut -d ',' -f1
 docker_version=$(docker --version | awk '{print $3}' | cut -d ',' -f1)
 if [ "$(echo -e "$docker_version 25" | sort -V | head -n1)" != "25" ]; then
-  echo "Updating Docker to version 25"
+  echo "Updating Docker to version the latest"
   curl -fsSL https://get.docker.com | sh >/dev/null 2>&1
 fi
 echo "Docker version is now 25"

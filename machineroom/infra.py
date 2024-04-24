@@ -42,6 +42,9 @@ class Infra1(tb.DeploymentBotFoundation):
                 self.connection_err(e, False)
             self.srv.use_next_node()
             k += 1
+
+
+
         self.run_tunnel_detection_off()
 
     def run_offline(self, call_job=None):
