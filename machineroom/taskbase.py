@@ -633,8 +633,9 @@ class DeploymentBotFoundation:
 
     def run_tunnel_detection(self):
         if self.srv.tunnel_type == TunnelType.NO_TUNNEL:
-            return
+            return False
         conn.use_macos_vpn_on(self.srv.profile_name)
+        return True
 
     def run_tunnel_detection_off(self):
         if self.srv.tunnel_type == TunnelType.NO_TUNNEL:

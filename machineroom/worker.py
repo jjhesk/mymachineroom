@@ -24,7 +24,10 @@ class ServerDoorJob(tb.DeploymentBotFoundation):
         if self.srv.serv_count < k:
             print("cannot start from out of range server number")
             return
-        self.run_tunnel_detection()
+        if self.run_tunnel_detection():
+            self.srv.use_next_node()
+            k += 1
+
         while k < self.srv.serv_count:
             self.db.set_server_id(self.srv.current_id)
             self.stage_0()
