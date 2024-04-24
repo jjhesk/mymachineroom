@@ -1,6 +1,6 @@
 import os
 
-from machineroom import taskbase as tb
+from machineroom import taskbase as tb, __version__
 from machineroom.tunnels.conn import *
 
 try:
@@ -115,6 +115,8 @@ def internal_work():
             print("Wrong path cannot open this file")
         job = ServerDoorJob(b)
         job.action_import()
+    elif a == "v":
+        print(f"version. {__version__}")
     elif a == "retire":
         file = os.path.join(Config.DATAPATH_BASE, b)
         if os.path.exists(file) is False:
