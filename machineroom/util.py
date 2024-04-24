@@ -433,7 +433,7 @@ class Servers:
             self.read_serv_at(0)
             self._on_detect = False
         except FoundVPNTunnel:
-            self.serv_count -= 1
+            ...
 
     def read_serv_at(self, index: int) -> dict:
         n = index % self.serv_count
@@ -472,6 +472,9 @@ class Servers:
         if self._on_detect is False:
             print(f"## ☎️ Now enter network ID#{n}: {line[0]} {line[1]}")
         return tmp
+
+    def has_tunnel(self) -> bool:
+        return self._tunnel_type != TunnelType.NO_TUNNEL
 
     def use_next_node(self, x: int = 1) -> dict:
         self._srv_index = self._srv_index + x
