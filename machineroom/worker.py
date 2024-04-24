@@ -1,6 +1,7 @@
 import os
 
-from machineroom import taskbase as tb, __version__
+from machineroom import taskbase as tb, __version__, ServerRoom, use_args, FieldConstruct, err_exit
+from machineroom.infra import Infra1
 from machineroom.tunnels.conn import *
 
 try:
@@ -9,58 +10,10 @@ except:
     os.system('python3.11 -m pip install SQLiteAsJSON')
     import SQLiteAsJSON
 
-from machineroom import *
-
 execute_path = os.path.dirname(__file__)
 
 
-class ServerDoorJob(tb.DeploymentBotFoundation):
-    def __init__(self, x):
-        super().__init__(x)
-        self.db = ServerRoom()
-
-    def __run_connect(self, callback_x=None):
-        k = self.start_server_from
-        if self.srv.serv_count < k:
-            print("cannot start from out of range server number")
-            return
-        if self.run_tunnel_detection():
-            self.srv.use_next_node()
-            k += 1
-
-        while k < self.srv.serv_count:
-            self.db.set_server_id(self.srv.current_id)
-            self.stage_0()
-            c = self._est_connection()
-            try:
-                self.stage_1(c)
-                if callable(callback_x):
-                    callback_x(c)
-            except (tb.pexpect.TIMEOUT, tb.pexpect.EOF):
-                print("maybe a time out")
-            except ConnectionResetError as e:
-                self.connection_err(e, True)
-            except Exception as e:
-                self.connection_err(e, False)
-            self.srv.use_next_node()
-            k += 1
-        self.run_tunnel_detection_off()
-
-    def __run_offline(self, call_job=None):
-        k = self.start_server_from
-        if self.srv.serv_count < k:
-            print("cannot start from out of range server number")
-            return
-        while k < self.srv.serv_count:
-            self.db.set_server_id(self.srv.current_id)
-            self.stage_0()
-            try:
-                if callable(call_job):
-                    call_job(self.srv.current_id)
-            except Exception as e:
-                self.connection_err(e, False)
-            self.srv.use_next_node()
-            k += 1
+class ServerDoorJob(Infra1):
 
     def action_import(self):
         self.__run_connect()
@@ -113,29 +66,37 @@ def internal_work():
 
 
     elif a == "import":
+        if b == "":
+            err_exit("need to have one more arg")
         file = os.path.join(Config.DATAPATH_BASE, b)
         if os.path.exists(file) is False:
-            print("Wrong path cannot open this file")
+            err_exit("Wrong path cannot open this file" + file)
         job = ServerDoorJob(b)
         job.action_import()
     elif a == "v":
         print(f"version. {__version__}")
     elif a == "retire":
+        if b == "":
+            err_exit("need to have one more arg")
         file = os.path.join(Config.DATAPATH_BASE, b)
         if os.path.exists(file) is False:
-            print("Wrong path cannot open this file")
+            err_exit("Wrong path cannot open this file" + file)
         job = ServerDoorJob(b)
         job.action_retire()
     elif a == "off-cert":
+        if b == "":
+            err_exit("need to have one more arg")
         file = os.path.join(Config.DATAPATH_BASE, b)
         if os.path.exists(file) is False:
-            print("Wrong path cannot open this file")
+            err_exit("Wrong path cannot open this file" + file)
         job = ServerDoorJob(b)
         job.action_off_cert()
     elif a == "add-cert":
+        if b == "":
+            err_exit("need to have one more arg")
         file = os.path.join(Config.DATAPATH_BASE, b)
         if os.path.exists(file) is False:
-            print("Wrong path cannot open this file")
+            err_exit("Wrong path cannot open this file" + file)
         job = ServerDoorJob(b)
         job.action_add_custom_cert("BLK_LOCAL", "/Users/hesdx/.ssh/blsp1.pub")
     elif a != None:
