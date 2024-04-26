@@ -42,22 +42,29 @@ def use_args() -> Tuple[str, str, str]:
 
     cmd = opt1
     f, c = function_command_alias("ls", CMD_LIST)
-    if f: cmd = c
+    if f is True:
+        cmd = c
     f, c = function_command_alias("scandocker", CMD_SCAN_DOCKER)
-    if f: cmd = c
+    if f is True:
+        cmd = c
     f, c = function_command_alias("import", CMD_IMPORT)
-    if f: cmd = c
+    if f is True:
+        cmd = c
     f, c = function_command_alias("v", CMD_VERSION)
-    if f: cmd = c
+    if f is True:
+        cmd = c
     f, c = function_command_alias("retire", CMD_RETIRE)
-    if f: cmd = c
+    if f is True:
+        cmd = c
     f, c = function_command_alias("off-cert", CMD_OFF_CERT)
-    if f: cmd = c
+    if f is True:
+        cmd = c
     f, c = function_command_alias("add-cert", CMD_ADD_CERT)
-    if f: cmd = c
-
+    if f is True:
+        cmd = c
     f, c = function_command_alias("generatewatchprofile", CMD_GENERATE_PROFILE)
-    if f: cmd = c
+    if f is True:
+        cmd = c
 
     return cmd, opt2, opt3
 

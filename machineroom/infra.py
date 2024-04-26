@@ -16,7 +16,6 @@ class Infra1(tb.DeploymentBotFoundation):
     def __init__(self, x):
         super().__init__(x)
 
-
     def run_conn(self, callback_x=None):
         k = self.start_server_from
         if self.srv.serv_count < k:
