@@ -1,8 +1,10 @@
 import os
+import random
 
 from machineroom import taskbase as tb, __version__, ServerRoom, use_args, FieldConstruct, err_exit
 from machineroom.infra import Infra1
 from machineroom.tunnels.conn import *
+from fabric import Connection
 
 try:
     import SQLiteAsJSON
@@ -30,13 +32,30 @@ class ServerDoorJob(Infra1):
     def _action_off_cert(self):
         self.db.delete_res_kv("identity_cert_installed")
 
+    def action_scan_ports(self):
+        self.run_conn(self._from_c_ports)
+
+    def _from_c_ports(self, c: Connection):
+        m = tb.list_all_open_ports(c)
+        self.db.update_res_kv("ports", m)
+        any_one = random.choice(m)
+
+
+
     def action_add_custom_cert(self, name, pubkey_path):
-        def add_certification(x):
-            if tb.detect_cert_signature(x, name) is False:
-                tb.copy_id(x, pubkey_path)
+        def certification(c: Connection):
+            if tb.detect_cert_signature(c, name) is False:
+                tb.copy_id(c, pubkey_path)
                 self.db.update_res_kv(f"custom_cert_{name}", True)
 
-        self.run_conn(add_certification)
+        self.run_conn(certification)
+
+    def action_remove_custom_cert(self, name):
+        def certification(c: Connection):
+            if tb.detect_cert_signature(c, name) is False:
+                self.db.delete_res_kv(f"custom_cert_{name}")
+
+        self.run_conn(certification)
 
 
 def internal_work():
@@ -59,14 +78,14 @@ def internal_work():
             y.add_icon("EXPIRED" if local.is_what_installed_full("retire", id) else "")
             y.add_icon("CERT" if local.is_what_installed_full("identity_cert_installed", id) else "")
             y.add_icon("DOCKER" if local.is_what_installed_full("docker_compose_installed", id) else "")
-            y.add_icon("DEAD" if local.is_what_installed_full("daed_installed", id) else "")
+            y.add_icon("DAED" if local.is_what_installed_full("daed_installed", id) else "")
             y.add_icon("YACHT" if local.is_what_installed_full("yacht_installed", id) else "")
             y.add_icon("PY" if local.is_what_installed_full("python3_installed", id) else "")
             print(y.output())
-    elif a == "sc":
+    elif a == "scandocker":
         print("This to scan out the running docker containers in the status of that server")
-
-
+    elif a == "scanports":
+        print("This to scan out the running docker containers in the status of that server")
     elif a == "import":
         if b == "":
             err_exit("need to have one more arg")
@@ -77,6 +96,19 @@ def internal_work():
         job.action_import()
     elif a == "v":
         print(f"version. {__version__}")
+
+    elif a == "generatewatchprofile":
+        if b == "":
+            err_exit("need to have one more arg")
+        file = os.path.join(Config.DATAPATH_BASE, b)
+        if os.path.exists(file) is False:
+            err_exit("Wrong path cannot open this file" + file)
+        job = ServerDoorJob(b)
+
+        job.action_scan_ports()
+
+
+
     elif a == "retire":
         if b == "":
             err_exit("need to have one more arg")
@@ -94,13 +126,29 @@ def internal_work():
         job = ServerDoorJob(b)
         job.action_off_cert()
     elif a == "add-cert":
+        print("You are about to adding custom certificate to all servers on behalf this machine room.")
         if b == "":
             err_exit("need to have one more arg")
         file = os.path.join(Config.DATAPATH_BASE, b)
         if os.path.exists(file) is False:
             err_exit("Wrong path cannot open this file" + file)
         job = ServerDoorJob(b)
-        job.action_add_custom_cert("BLK_LOCAL", "/Users/hesdx/.ssh/blsp1.pub")
+        key_path = input(
+            "Enter the path of the pub file. For example /Users/{user_name_here}/.ssh/{user_custom_public_key}.pub")
+        cert_name = input(
+            "Enter the name of the pub file. open the .pub file and usually its located at the very last word of the key file.")
+
+        job.action_add_custom_cert(cert_name, key_path)
+    elif a == "remove-custom-cert":
+        if b == "":
+            err_exit("need to have one more arg")
+        file = os.path.join(Config.DATAPATH_BASE, b)
+        if os.path.exists(file) is False:
+            err_exit("Wrong path cannot open this file" + file)
+        job = ServerDoorJob(b)
+        cert_name = input(
+            "Enter the name of the pub file. open the .pub file and usually its located at the very last word of the key file.")
+        job.action_remove_custom_cert(cert_name)
     elif a != None:
         local.set_server_id(a)
         if local.has_this_server() is False:

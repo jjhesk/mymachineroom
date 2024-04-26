@@ -9,10 +9,22 @@ import os.path
 from typing import Union, Tuple, TextIO
 
 from invoke import StreamWatcher
-from .const import *
+from machineroom.sql import ServerRoom
 
-CMD_LIST1 = ["ls", "show", "list", "tell"]
-CMD_LIST2 = ["scan", "check", "validation", "valid"]
+from .const import *
+from .errs import *
+
+
+def function_command_alias(actual: str, command_alias: list):
+    if actual in command_alias:
+        return True, actual
+    return False, None
+
+
+def check_for_bad_ids(id_name: str):
+    all_bad = CMD_SCAN_DOCKER + CMD_IMPORT + CMD_SCAN_PORT + CMD_LIST + CMD_VERSION + CMD_RETIRE + CMD_OFF_CERT + CMD_ADD_CERT + CMD_GENERATE_PROFILE
+    if id_name in all_bad:
+        raise BadIDs()
 
 
 def use_args() -> Tuple[str, str, str]:
@@ -28,18 +40,33 @@ def use_args() -> Tuple[str, str, str]:
             if len(sys.argv) >= 4:
                 opt3 = sys.argv[3]
 
-    if opt1 in CMD_LIST1:
-        cmd = "ls"
-    elif opt1 in CMD_LIST2:
-        cmd = "sc"
-    else:
-        cmd = opt1
+    cmd = opt1
+    f, c = function_command_alias("ls", CMD_LIST)
+    if f: cmd = c
+    f, c = function_command_alias("scandocker", CMD_SCAN_DOCKER)
+    if f: cmd = c
+    f, c = function_command_alias("import", CMD_IMPORT)
+    if f: cmd = c
+    f, c = function_command_alias("v", CMD_VERSION)
+    if f: cmd = c
+    f, c = function_command_alias("retire", CMD_RETIRE)
+    if f: cmd = c
+    f, c = function_command_alias("off-cert", CMD_OFF_CERT)
+    if f: cmd = c
+    f, c = function_command_alias("add-cert", CMD_ADD_CERT)
+    if f: cmd = c
+
+    f, c = function_command_alias("generatewatchprofile", CMD_GENERATE_PROFILE)
+    if f: cmd = c
 
     return cmd, opt2, opt3
 
 
-def err_exit(msg: str):
-    print(msg)
+def err_exit(msg):
+    if isinstance(msg, str):
+        print(msg)
+    if isinstance(msg, MachineRoomErr):
+        print(str(msg))
     exit(0)
 
 
@@ -386,18 +413,6 @@ class BufferFile:
         print("save as done.")
 
 
-class ServerAuthInfoErr(Exception):
-    ...
-
-
-class NodeCountIsNotInPlan(Exception):
-    ...
-
-
-class FoundVPNTunnel(Exception):
-    ...
-
-
 class Servers:
     _meta_file: str
     current_id: str
@@ -409,6 +424,7 @@ class Servers:
     _tunnel_type: TunnelType
     profile_name: str
     _on_detect: bool
+    _local_db: ServerRoom
 
     def __init__(self, file: str):
         self._meta_file = file
@@ -417,10 +433,23 @@ class Servers:
         self.profile_name = ""
         self._srv_index = 0
         self._on_detect = True
+        self._local_db = ServerRoom()
 
     @property
     def path_file(self) -> str:
         return os.path.join(Config.DATAPATH_BASE, self._meta_file)
+
+    def has_this_server(self):
+        return self._local_db.has_this_server()
+
+    def is_cert_installed(self):
+        return self._local_db.is_cert_installed()
+
+    def cert_install(self):
+        return self._local_db.cert_install()
+
+    def local(self):
+        return self._local_db
 
     @property
     def at_server(self) -> int:
@@ -438,50 +467,78 @@ class Servers:
         except FoundVPNTunnel:
             ...
 
-    def read_serv_at(self, index: int) -> dict:
+    def read_serv_at(self, index: int):
         n = index % self.serv_count
         line = read_file_at_line(self.path_file, n)
-        if "----" in line:
-            line = line.split("----")
-        elif "---" in line:
-            line = line.split("---")
-        elif "--" in line:
-            line = line.split("--")
-        elif "————" in line:
-            line = line.split("————")
-        elif "——" in line:
-            line = line.split("——")
-        if isinstance(line, str):
-            raise ServerAuthInfoErr()
-
+        line = reader_split_recognition(line)
+        configuration = reader_profile_0(line)
         self._srv_index = n
-        if index == 0 and "#" in line[0]:
-            VPN_TUNNEL = line[1]
-            print(f"Detected tunnel for machine group {line[0]} using {VPN_TUNNEL}")
-            self._tunnel_type = TunnelType.Recongize(VPN_TUNNEL)
+        ID = configuration.get("id")
+        IP = configuration.get("host")
+
+        if index == 0 and "#" in configuration.get("id"):
+            TUNNEL_TYPE = IP
+            print(f"Detected tunnel for machine group {ID} using {TUNNEL_TYPE}")
+            self._tunnel_type = TunnelType.Recongize(TUNNEL_TYPE)
             self.profile_name = line[0].replace("#", "")
             raise FoundVPNTunnel()
 
-        tmp = {
-            "id": line[0],
-            "ip": line[1],
-            "user": line[2],
-            "pass": line[3]
-        }
-        self.current_id = line[0]
-        self.current_host = line[1]
-        self.current_user = line[2]
-        self.current_pass = line[3]
+        self.current_id = ID
+        self.current_host = IP
+        self.current_user = configuration.get("user")
+        self.current_pass = configuration.get("pass")
         if self._on_detect is False:
-            print(f"## ☎️ Now enter network ID#{n}: {line[0]} {line[1]}")
-        return tmp
+            print(f"## ☎️ Now enter network ID#{n}: {ID} {IP}")
+        if self.has_tunnel():
+            self._local_db.entrance_L2(self.profile_name, configuration)
+        else:
+            self._local_db.entrance_L1(configuration)
 
     def has_tunnel(self) -> bool:
         return self._tunnel_type != TunnelType.NO_TUNNEL
 
-    def use_next_node(self, x: int = 1) -> dict:
+    def use_next_node(self, x: int = 1):
         self._srv_index = self._srv_index + x
-        return self.read_serv_at(self._srv_index)
+        check_for_bad_ids(self.current_id)
+        self._local_db.set_server_id(self.current_id)
+        self.read_serv_at(self._srv_index)
+
+
+def reader_split_recognition(line: str) -> list:
+    if "----" in line:
+        line = line.split("----")
+    elif "---" in line:
+        line = line.split("---")
+    elif "--" in line:
+        line = line.split("--")
+    elif "————" in line:
+        line = line.split("————")
+    elif "——" in line:
+        line = line.split("——")
+    if isinstance(line, str):
+        raise ServerAuthInfoErr()
+
+    return line
+
+
+def reader_profile_0(line: list) -> dict:
+    profile = {
+        "id": line[0],
+        "host": line[1],
+        "user": line[2],
+        "pass": line[3],
+        "port": 22
+    }
+
+    try:
+        port = line[4]
+        profile.update({
+            "port": port
+        })
+    except KeyError:
+        ...
+
+    return profile
 
 
 class InfrastructurePlannerFoundation:

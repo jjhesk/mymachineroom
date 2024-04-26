@@ -31,6 +31,23 @@ def exists(c: Connection, path: str) -> bool:
         return True
 
 
+def docker_version_checker(r: Result):
+    line = str(r.stdout.strip().replace("\n", ""))
+    if "Docker version" not in line:
+        raise DockerAccessProblem("docker is not installed or may have permission problem")
+    # Extract the version number
+    version_str = line.split()[2]
+    version_parts = version_str.split(".")
+    base_version = int(version_parts[0])
+    # Check if the base version is 25 or above
+    if base_version >= 25:
+        print("The base version is 25 or above")
+        return True
+    else:
+        print("The base version is below 25")
+        return False
+
+
 def ensure_path_exist(c: Connection, path: str) -> bool:
     if exists(c, path) is False:
         print(f"make path for {path}")
@@ -145,6 +162,17 @@ def detect_available_ports(c: Connection) -> list:
     r = exec_shell_global(c, PORT_DETECTION)
     ports = r.stdout.strip().split("\n")
     return ports
+
+
+def list_all_open_ports(c: Connection) -> list:
+    r = c.run("sudo ss -tuln | grep LISTEN | awk '{print $5}' | cut -d: -f2", pty=False, warn=True)
+    before = r.stdout.strip()
+    if before == "":
+        return []
+    else:
+        k = str(before).split("\n")
+        port_list = list(set(k))
+        return port_list
 
 
 def run_context(c: Connection, block: str) -> Result:
@@ -608,8 +636,6 @@ def install_clash_network(
 class DeploymentBotFoundation:
     # the text file servers that recorded the authentications and some basic information
     srv: Servers
-    # the local db connection of servers
-    db: ServerRoom
     start_server_from: int
     stop_server_at: int
     start_server_in_list: list[int]
@@ -644,12 +670,12 @@ class DeploymentBotFoundation:
         return True
 
     def _est_connection(self) -> Connection:
-        if self.db.has_this_server() is False:
+        if self.srv.has_this_server() is False:
             return Connection(host=self.srv.current_host, port=22, user=self.srv.current_user, connect_kwargs={
                 "password": self.srv.current_pass,
                 # "key_filename": ['/Users/..../.ssh/id_rsa']
             }, config=self._config())
-        elif self.db.is_cert_installed() is False:
+        elif self.srv.is_cert_installed() is False:
             return Connection(host=self.srv.current_host, port=22, user=self.srv.current_user, connect_kwargs={
                 "password": self.srv.current_pass,
                 # "key_filename": ['/Users/..../.ssh/id_rsa']
@@ -687,15 +713,7 @@ class DeploymentBotFoundation:
             return True
 
     def stage_0(self):
-        if self.srv.tunnel_type == TunnelType.NO_TUNNEL:
-            self.db.tipping_point(
-                self.srv.current_user, self.srv.current_id,
-                self.srv.current_host, self.srv.current_pass
-            )
-        else:
-            self.db.tipping_point_tunnel(
-                self.srv.profile_name, self.srv.current_user, self.srv.current_id,
-                self.srv.current_host, self.srv.current_pass)
+        ...
 
     def stage_1(self, c: Connection):
         for key in Config.STAGE1:
@@ -708,65 +726,69 @@ class DeploymentBotFoundation:
         r = c.run("which docker", warn=True, pty=True)
         if str(r.stdout.strip()) != "":
             Config.DOCKER = str(r.stdout.strip())
-            self.db.docker_ce_install()
-        r = c.run("which docker-compose", warn=True, pty=True)
-        if str(r.stdout.strip()) != "":
-            Config.DOCKER_COMPOSE = str(r.stdout.strip())
-            self.db.docker_compose_install()
+            r = c.run(f"{Config.DOCKER} --version", warn=True, pty=True)
+            if docker_version_checker(r):
+                self.srv.local().docker_ce_install()
+            else:
+                r = c.run("which docker-compose", warn=True, pty=True)
+                if str(r.stdout.strip()) != "":
+                    Config.DOCKER_COMPOSE = str(r.stdout.strip())
+                    self.srv.local().docker_compose_install()
+
         r = c.run("which daed", warn=True, pty=True)
         if str(r.stdout.strip()) != "":
-            self.db.dae_install()
+            self.srv.local().dae_install()
 
     def _stage_loop(self, c: Connection, task: str):
         if task == "cert":
-            if self.db.is_cert_installed() is False:
+            if self.srv.is_cert_installed() is False:
                 if detect_cert(c) is False:
                     copy_id(c, Config.PUB_KEY)
-                    self.db.cert_install()
+                    self.srv.cert_install()
                 else:
-                    self.db.cert_install()
+                    self.srv.cert_install()
 
         if task == "env":
             c.config.load_shell_env()
             self.load_system_paths(c)
 
         if task == "docker":
-            if self.db.is_docker_ce_installed() is False:
+            if self.srv.local().is_docker_ce_installed() is False:
                 if detect_program(c, "docker") is False:
                     install_docker_ce(c)
-                    self.db.docker_ce_install()
+                    self.srv.local().docker_ce_install()
                 else:
                     print("DOCKER is installed")
             else:
                 install_docker_ce(c)
 
         if task == "python":
-            if self.db.is_python_installed() is False:
+            if self.srv.local().is_python_installed() is False:
                 if detect_program(c, "python3") is False:
                     print("python3 needs to install")
                     install_python(c)
-                    self.db.python3_install()
+                    self.srv.local().python3_install()
 
         if task == "daed":
-            if self.db.is_dae_installed() is False:
+            if self.srv.local().is_dae_installed() is False:
                 if detect_program(c, "daed") is False:
                     print("daed will be installed")
                     install_dae_proxy(c)
-                    self.db.dae_install()
+                    self.srv.local().dae_install()
 
         if task == "watchtower":
-            if self.db.is_watchtower_installed() is False:
+            if self.srv.local().is_watchtower_installed() is False:
                 if check_docker_ps_specific(c, "containrrr/watchtower") is False:
                     print("watchtower will be installed - the automatic updates of the docker container")
                     install_watch_tower(c)
-                    self.db.watchtower_install()
+                    self.srv.local().watchtower_install()
 
         if task == "clash":
-            if self.db.is_xclash_installed() is False:
+            if self.srv.local().is_xclash_installed() is False:
                 if check_docker_ps_specific(c, "dreamacro/clash") is False:
                     print("dreamacro.clash will be installed")
                     if self.install_xclash(1) is True:
-                        self.db.docker_clash_install()
+                        self.srv.local().docker_clash_install()
             else:
                 if self.install_xclash_update() is True:
                     if self.install_xclash(2) is True:
@@ -776,9 +798,9 @@ class DeploymentBotFoundation:
             port = task.replace("yacht", "")
             if port == "":
                 port = "9055"
-            if self.db.is_docker_yacht_installed() is False:
+            if self.srv.local().is_docker_yacht_installed() is False:
                 install_container_management_utility(c, int(port))
-                self.db.docker_yacht_install()
+                self.srv.local().docker_yacht_install()
 
     def install_xclash(self, install_times: int) -> bool:
         # if check_docker_ps_specific(c, "dreamacro/clash") is False:...

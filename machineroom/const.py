@@ -30,9 +30,10 @@ class TunnelType(Enum):
     IPVANISH = 6
     PPTP = 7
     WIREGUARD = 8
+    SSH = 9
 
     @classmethod
-    def Recongize(cls, what:str):
+    def Recongize(cls, what: str):
         what = what.lower()
         if "l2tp/ipsec" in what:
             return cls.L2TP_IPSEC
@@ -43,6 +44,8 @@ class TunnelType(Enum):
         elif "ikv2" in what:
             return cls.IKEV2
 
+        elif "ssh" in what:
+            return cls.SSH
         else:
             return cls.NO_TUNNEL
 
@@ -50,6 +53,17 @@ class TunnelType(Enum):
     def from_date(cls, date):
         return cls(date.isoweekday())
 
+
+CMD_LIST = ["ls", "show", "list", "tell"]
+CMD_SCAN_DOCKER = ["scan_docker", "scandocker", "validation", "valid", "scan_dockers"]
+CMD_SCAN_PORT = ["scanport", "scanports", "scan_ports", "scan_port"]
+CMD_IMPORT = ["import", "update_file", "update_conf", "updateconfig", "updateconfiguration", "updateconfigurations"]
+CMD_VERSION = ["v", "ver", "versions", "version"]
+CMD_RETIRE = ["retire", "retires", "retired"]
+CMD_OFF_CERT = ["off-cert", "takeoff", "stripcert", "takeout", "removecert", "certremove"]
+CMD_ADD_CERT = ["add-cert", "addingcert", "makecert", "cert-on", "on-cert", "customcert", "certificatessh",
+                "sshcertifcate"]
+CMD_GENERATE_PROFILE = ["generateprofile", "gen-profile", "watch-profile","watch_file","watchscan"]
 
 DETECT_PROCESS = 'ps aux | grep -sie "{COMMAND_NAME}" | grep -v "grep -sie"'
 HEALTH_CHK_DB = """docker run --rm -it --mount type=bind,source={PWD},destination=/data sstc/sqlite3 find . -maxdepth 1 -iname "*.db" -print0 -exec sqlite3 '{}' 'PRAGMA integrity_check;' ';'"""

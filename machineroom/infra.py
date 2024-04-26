@@ -15,7 +15,7 @@ execute_path = os.path.dirname(__file__)
 class Infra1(tb.DeploymentBotFoundation):
     def __init__(self, x):
         super().__init__(x)
-        self.db = ServerRoom()
+
 
     def run_conn(self, callback_x=None):
         k = self.start_server_from
@@ -27,7 +27,6 @@ class Infra1(tb.DeploymentBotFoundation):
             k += 1
 
         while k < self.srv.serv_count:
-            self.db.set_server_id(self.srv.current_id)
             self.stage_0()
             c = self._est_connection()
             try:
@@ -42,9 +41,6 @@ class Infra1(tb.DeploymentBotFoundation):
                 self.connection_err(e, False)
             self.srv.use_next_node()
             k += 1
-
-
-
         self.run_tunnel_detection_off()
 
     def run_offline(self, call_job=None):

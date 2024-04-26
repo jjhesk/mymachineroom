@@ -4,7 +4,6 @@ import sys
 import os
 import time
 from configparser import ConfigParser
-
 from machineroom import Config
 
 

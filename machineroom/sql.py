@@ -392,37 +392,34 @@ class ServerRoom(ToolDb):
         da = self.get_member_res(self._tblembr, server_id)
         return True if program in da and da[program] is True else False
 
-    def tipping_point(self, user: str, id: str, host: str, password: str, port: int = 22):
-        """
-        first time to receive profile data to the account and handle the creating the new one on the fly.
-        """
+    def entrance_L1(self, auth_data: dict):
         if self.has_this_server() is False:
-            # first time registration
-            self._insert_server(host, id, password, user, port, {})
-        else:
-            # update when the new data is found. but the ID cannot be updated.
-            p = {
-                "host": host,
-                "user": user,
-                "pass": password,
-                "port": port,
+            default_data = {
+                "id": self.server_id,
+                "next_action": "{}",
+                "description": "",
+                "res": json.dumps({})
             }
-            return self.update_param(self.server_id, p)
+            default_data.update(auth_data)
+            return self.insert_new(default_data)
+        else:
+            auth_data.pop("id")
+            return self.update_param(self.server_id, auth_data)
 
-    def tipping_point_tunnel(self, profile_tunnel: str, user: str, id: str, host: str, password: str, port: int = 22):
+    def entrance_L2(self, profile_tunnel: str, auth_data: dict):
         if self.has_this_server() is False:
-            # first time registration
-            self._insert_server(host, id, password, user, port, {"tunnel_profile": profile_tunnel})
+            default_data = {
+                "id": self.server_id,
+                "next_action": "{}",
+                "description": "",
+                "res": json.dumps({"tunnel_profile": profile_tunnel})
+            }
+            default_data.update(auth_data)
+            return self.insert_new(default_data)
         else:
             self.update_res_kv("tunnel_profile", profile_tunnel)
-            # update when the new data is found. but the ID cannot be updated.
-            p = {
-                "host": host,
-                "user": user,
-                "pass": password,
-                "port": port,
-            }
-            return self.update_param(self.server_id, p)
+            auth_data.pop("id")
+            return self.update_param(self.server_id, auth_data)
 
     def set_invalidate_token(self):
         d = self.get_member_res(self._tblembr, self.server_id)
