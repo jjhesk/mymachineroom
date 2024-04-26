@@ -15,8 +15,8 @@ from .const import *
 from .errs import *
 
 
-def function_command_alias(actual: str, command_alias: list):
-    if actual in command_alias:
+def function_command_alias(input: str, actual: str, command_alias: list):
+    if input in command_alias:
         return True, actual
     return False, None
 
@@ -41,28 +41,28 @@ def use_args() -> Tuple[str, str, str]:
                 opt3 = sys.argv[3]
 
     cmd = opt1
-    f, c = function_command_alias("ls", CMD_LIST)
+    f, c = function_command_alias(opt1, "ls", CMD_LIST)
     if f is True:
         cmd = c
-    f, c = function_command_alias("scandocker", CMD_SCAN_DOCKER)
+    f, c = function_command_alias(opt1, "scandocker", CMD_SCAN_DOCKER)
     if f is True:
         cmd = c
-    f, c = function_command_alias("import", CMD_IMPORT)
+    f, c = function_command_alias(opt1, "import", CMD_IMPORT)
     if f is True:
         cmd = c
-    f, c = function_command_alias("v", CMD_VERSION)
+    f, c = function_command_alias(opt1, "v", CMD_VERSION)
     if f is True:
         cmd = c
-    f, c = function_command_alias("retire", CMD_RETIRE)
+    f, c = function_command_alias(opt1, "retire", CMD_RETIRE)
     if f is True:
         cmd = c
-    f, c = function_command_alias("off-cert", CMD_OFF_CERT)
+    f, c = function_command_alias(opt1, "off-cert", CMD_OFF_CERT)
     if f is True:
         cmd = c
-    f, c = function_command_alias("add-cert", CMD_ADD_CERT)
+    f, c = function_command_alias(opt1, "add-cert", CMD_ADD_CERT)
     if f is True:
         cmd = c
-    f, c = function_command_alias("generatewatchprofile", CMD_GENERATE_PROFILE)
+    f, c = function_command_alias(opt1, "generatewatchprofile", CMD_GENERATE_PROFILE)
     if f is True:
         cmd = c
 
