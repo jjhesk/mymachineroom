@@ -64,7 +64,7 @@ CMD_OFF_CERT = ["off-cert", "takeoff", "stripcert", "takeout", "removecert", "ce
 CMD_ADD_CERT = ["add-cert", "addingcert", "makecert", "cert-on", "on-cert", "customcert", "certificatessh",
                 "sshcertifcate"]
 CMD_GENERATE_PROFILE = ["generateprofile", "gen-profile", "watch-profile","watch_file","watchscan"]
-
+CMD_SET_BASH_START = ["sethome","startpath","loginstart","loginat"]
 DETECT_PROCESS = 'ps aux | grep -sie "{COMMAND_NAME}" | grep -v "grep -sie"'
 HEALTH_CHK_DB = """docker run --rm -it --mount type=bind,source={PWD},destination=/data sstc/sqlite3 find . -maxdepth 1 -iname "*.db" -print0 -exec sqlite3 '{}' 'PRAGMA integrity_check;' ';'"""
 HEALTH_CHK_DB2 = """

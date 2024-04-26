@@ -22,7 +22,7 @@ def function_command_alias(input: str, actual: str, command_alias: list):
 
 
 def check_for_bad_ids(id_name: str):
-    all_bad = CMD_SCAN_DOCKER + CMD_IMPORT + CMD_SCAN_PORT + CMD_LIST + CMD_VERSION + CMD_RETIRE + CMD_OFF_CERT + CMD_ADD_CERT + CMD_GENERATE_PROFILE
+    all_bad = CMD_SCAN_DOCKER + CMD_IMPORT + CMD_SCAN_PORT + CMD_LIST + CMD_VERSION + CMD_RETIRE + CMD_OFF_CERT + CMD_ADD_CERT + CMD_GENERATE_PROFILE +CMD_SET_BASH_START
     if id_name in all_bad:
         raise BadIDs()
 
@@ -44,7 +44,7 @@ def use_args() -> Tuple[str, str, str]:
     f, c = function_command_alias(opt1, "ls", CMD_LIST)
     if f is True:
         cmd = c
-    f, c = function_command_alias(opt1, "scandocker", CMD_SCAN_DOCKER)
+    f, c = function_command_alias(opt1, "docker-scan", CMD_SCAN_DOCKER)
     if f is True:
         cmd = c
     f, c = function_command_alias(opt1, "import", CMD_IMPORT)
@@ -62,7 +62,10 @@ def use_args() -> Tuple[str, str, str]:
     f, c = function_command_alias(opt1, "add-cert", CMD_ADD_CERT)
     if f is True:
         cmd = c
-    f, c = function_command_alias(opt1, "generatewatchprofile", CMD_GENERATE_PROFILE)
+    f, c = function_command_alias(opt1, "watch-profile", CMD_GENERATE_PROFILE)
+    if f is True:
+        cmd = c
+    f, c = function_command_alias(opt1, "set-home", CMD_SET_BASH_START)
     if f is True:
         cmd = c
 
@@ -426,6 +429,7 @@ class Servers:
     current_host: str
     current_user: str
     current_pass: str
+    current_srv_port:int
     _srv_index: int
     _meta_file: int
     _tunnel_type: TunnelType
@@ -494,6 +498,8 @@ class Servers:
         self.current_host = IP
         self.current_user = configuration.get("user")
         self.current_pass = configuration.get("pass")
+        self.current_srv_port = configuration.get("port")
+        self._local_db.set_server_id(ID)
         if self._on_detect is False:
             print(f"## ☎️ Now enter network ID#{n}: {ID} {IP}")
         if self.has_tunnel():
@@ -507,7 +513,6 @@ class Servers:
     def use_next_node(self, x: int = 1):
         self._srv_index = self._srv_index + x
         check_for_bad_ids(self.current_id)
-        self._local_db.set_server_id(self.current_id)
         self.read_serv_at(self._srv_index)
 
 

@@ -318,20 +318,6 @@ class ServerRoom(ToolDb):
         }
         return self.update_param(server_id, update_dic)
 
-    def _insert_server(self, host: str, id: str, password: str, user: str, port: int,
-                       file: dict) -> bool:
-        p = {
-            "host": host,
-            "id": id,
-            "user": user,
-            "pass": password,
-            "port": port,
-            "next_action": "{}",
-            "description": "",
-            "res": json.dumps(file)
-        }
-        return self.insert_new(p)
-
     def get_res_kv(self, k: str):
         try:
             da = self.get_member_res(self._tblembr, self.server_id)
@@ -342,7 +328,7 @@ class ServerRoom(ToolDb):
         except TypeError:
             return ""
         except Exception:
-            return ''
+            return ""
 
     def total_count(self, tbl: str) -> int:
         cursor = self.conn.cursor()
@@ -374,8 +360,6 @@ class ServerRoom(ToolDb):
             da.pop(k)
         self._update_server_meta(self.server_id, da)
 
-    def get_home_path(self) -> str:
-        return self.get_res_kv("home_path")
 
     def get_tunnel_profile(self):
         return self.get_res_kv("tunnel_profile")
@@ -398,7 +382,7 @@ class ServerRoom(ToolDb):
                 "id": self.server_id,
                 "next_action": "{}",
                 "description": "",
-                "res": json.dumps({})
+                "res": "{}",
             }
             default_data.update(auth_data)
             return self.insert_new(default_data)

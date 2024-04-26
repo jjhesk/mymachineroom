@@ -676,16 +676,18 @@ class DeploymentBotFoundation:
                 # "key_filename": ['/Users/..../.ssh/id_rsa']
             }, config=self._config())
         elif self.srv.is_cert_installed() is False:
-            return Connection(host=self.srv.current_host, port=22, user=self.srv.current_user, connect_kwargs={
-                "password": self.srv.current_pass,
-                # "key_filename": ['/Users/..../.ssh/id_rsa']
-            }, config=self._config())
+            return Connection(host=self.srv.current_host, port=self.srv.current_srv_port, user=self.srv.current_user,
+                              connect_kwargs={
+                                  "password": self.srv.current_pass,
+                                  # "key_filename": ['/Users/..../.ssh/id_rsa']
+                              }, config=self._config())
         else:
             print("cert is installed.")
-            return Connection(host=self.srv.current_host, port=22, user=self.srv.current_user, connect_kwargs={
-                # "password": self.srv.current_pass,
-                "key_filename": [Config.PUB_KEY]
-            }, config=self._config())
+            return Connection(host=self.srv.current_host, port=self.srv.current_srv_port, user=self.srv.current_user,
+                              connect_kwargs={
+                                  # "password": self.srv.current_pass,
+                                  "key_filename": [Config.PUB_KEY]
+                              }, config=self._config())
 
     def connection_err(self, item: Exception, on_err_exit: bool):
         print("======================== exit.")
@@ -714,6 +716,8 @@ class DeploymentBotFoundation:
 
     def stage_0(self):
         ...
+    def maybe_upgrade_docker(self):
+        ...
 
     def stage_1(self, c: Connection):
         for key in Config.STAGE1:
@@ -734,6 +738,7 @@ class DeploymentBotFoundation:
                 if str(r.stdout.strip()) != "":
                     Config.DOCKER_COMPOSE = str(r.stdout.strip())
                     self.srv.local().docker_compose_install()
+                self.maybe_upgrade_docker()
 
         r = c.run("which daed", warn=True, pty=True)
         if str(r.stdout.strip()) != "":
@@ -751,16 +756,6 @@ class DeploymentBotFoundation:
         if task == "env":
             c.config.load_shell_env()
             self.load_system_paths(c)
-
-        if task == "docker":
-            if self.srv.local().is_docker_ce_installed() is False:
-                if detect_program(c, "docker") is False:
-                    install_docker_ce(c)
-                    self.srv.local().docker_ce_install()
-                else:
-                    print("DOCKER is installed")
-            else:
-                install_docker_ce(c)
 
         if task == "python":
             if self.srv.local().is_python_installed() is False:
@@ -809,3 +804,14 @@ class DeploymentBotFoundation:
 
     def install_xclash_update(self) -> bool:
         return False
+
+
+"""if self.srv.local().is_docker_ce_installed() is False:
+                if detect_program(c, "docker") is False:
+                    install_docker_ce(c)
+                    self.srv.local().docker_ce_install()
+                else:
+                    print("DOCKER is installed")
+            else:
+                install_docker_ce(c)
+"""

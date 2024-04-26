@@ -24,7 +24,6 @@ class Infra1(tb.DeploymentBotFoundation):
         if self.run_tunnel_detection():
             self.srv.use_next_node()
             k += 1
-
         while k < self.srv.serv_count:
             self.stage_0()
             c = self._est_connection()
