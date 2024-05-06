@@ -25,10 +25,13 @@ def copy_id(c: Connection, file: str = Config.PUB_KEY):
 def exists(c: Connection, path: str) -> bool:
     r = c.run(f'stat {path}', warn=True, pty=True, hide=True)
     line = str(r.stdout.strip().replace("\n", ""))
+    if "没有那个文件或目录" in line:
+        return False
+
     if "No such file or directory" in line:
         return False
-    else:
-        return True
+
+    return True
 
 
 def docker_version_checker(r: Result):
@@ -56,9 +59,9 @@ def ensure_path_exist(c: Connection, path: str) -> bool:
     return True
 
 
-def upload_cache_file(c: Connection, cache_file_name: str, if_not_exist: bool = False):
-    remote_path = os.path.join(Config.REMOTE_WS, "cache", cache_file_name)
-    local_path = os.path.join(Config.WS_LOCAL, "cache", cache_file_name)
+def upload_what_file(c: Connection, folder_name: str, cache_file_name: str, if_not_exist: bool):
+    remote_path = os.path.join(Config.REMOTE_WS, folder_name, cache_file_name)
+    local_path = os.path.join(Config.WS_LOCAL, folder_name, cache_file_name)
     if if_not_exist is True:
         if exists(c, remote_path) is False:
             c.put(local_path, remote_path)
@@ -66,10 +69,10 @@ def upload_cache_file(c: Connection, cache_file_name: str, if_not_exist: bool = 
         c.put(local_path, remote_path)
 
 
-def upload_cache_file_modify(c: Connection, cache_file_name: str, modifier, if_not_exist: bool = False):
-    remote_path = os.path.join(Config.REMOTE_WS, "cache", cache_file_name)
-    local_path = os.path.join(Config.WS_LOCAL, "cache", cache_file_name)
-    local_mod_path = os.path.join(Config.WS_LOCAL, "cache", "mod_" + cache_file_name)
+def upload_what_file_modify(c: Connection, folder_name: str, cache_file_name: str, modifier, if_not_exist: bool):
+    remote_path = os.path.join(Config.REMOTE_WS, folder_name, cache_file_name)
+    local_path = os.path.join(Config.WS_LOCAL, folder_name, cache_file_name)
+    local_mod_path = os.path.join(Config.WS_LOCAL, folder_name, "mod_" + cache_file_name)
 
     if callable(modifier):
         io = open(local_path, "r")
@@ -88,6 +91,22 @@ def upload_cache_file_modify(c: Connection, cache_file_name: str, modifier, if_n
         else:
             c.put(local_mod_path, remote_path)
         os.remove(local_mod_path)
+
+
+def upload_cache_file(c: Connection, cache_file_name: str, if_not_exist: bool = False):
+    upload_what_file(c, "cache", cache_file_name, if_not_exist)
+
+
+def upload_cache_file_modify(c: Connection, cache_file_name: str, modifier, if_not_exist: bool = False):
+    upload_what_file_modify(c, "cache", cache_file_name, modifier, if_not_exist)
+
+
+def upload_asset_file(c: Connection, cache_file_name: str, if_not_exist: bool = False):
+    upload_what_file(c, "assets", cache_file_name, if_not_exist)
+
+
+def upload_asset_file_modify(c: Connection, cache_file_name: str, modifier, if_not_exist: bool = False):
+    upload_what_file_modify(c, "assets", cache_file_name, modifier, if_not_exist)
 
 
 # https://fabric-zh.readthedocs.io/_/downloads/zh-cn/latest/pdf/
@@ -716,6 +735,7 @@ class DeploymentBotFoundation:
 
     def stage_0(self):
         ...
+
     def maybe_upgrade_docker(self):
         ...
 

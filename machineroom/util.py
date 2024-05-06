@@ -216,7 +216,7 @@ def capture_js_block(start_cap_line: str, end_cap_line: str, offset_back_line: i
         line_bank = blocks_handler(line_bank, len(line_bank), offset_back_line, additional_line_js)
 
     my_str_as_bytes = str.encode("".join(line_bank))
-    _save_bytes(my_str_as_bytes, path_tmp)
+    _save_bytes(path_tmp, my_str_as_bytes)
     return evaluate_javascript(path_tmp)
 
 
@@ -328,8 +328,7 @@ def find_text(search_keyword: str, temp_file: str):
 
 def store_txt(file_put: str, content: str):
     path_tmp = os.path.join(Config.DATAPATH_BASE, file_put)
-    my_str_as_bytes = str.encode(content)
-    _save_bytes(my_str_as_bytes, path_tmp)
+    _save_bytes(path_tmp, str.encode(content))
 
 
 class BufferFile:
@@ -485,8 +484,8 @@ class Servers:
         configuration = reader_profile_0(line)
         self._srv_index = n
         ID = configuration.get("id")
+        check_for_bad_ids(ID)
         IP = configuration.get("host")
-
         if index == 0 and "#" in configuration.get("id"):
             TUNNEL_TYPE = IP
             print(f"Detected tunnel for machine group {ID} using {TUNNEL_TYPE}")
@@ -512,7 +511,6 @@ class Servers:
 
     def use_next_node(self, x: int = 1):
         self._srv_index = self._srv_index + x
-        check_for_bad_ids(self.current_id)
         self.read_serv_at(self._srv_index)
 
 
@@ -547,6 +545,8 @@ def reader_profile_0(line: list) -> dict:
         profile.update({
             "port": port
         })
+    except IndexError:
+        ...
     except KeyError:
         ...
 

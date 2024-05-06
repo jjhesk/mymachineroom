@@ -35,6 +35,12 @@ your everyday tasks. You've got this!
 7. Improved collaboration: Centralized management of all machines can facilitate better collaboration among team
    members, as everyone can access the same data, reports, and tools from one console.
 
+## SDK-Extensive Infrastructure
+
+- [x] Infra1
+- [x] Infra2
+- [x] Basic worker bot implementation
+
 ## Current features
 
 List IPs

@@ -32,4 +32,4 @@ logger3.setLevel(logging.ERROR)
 logger4.setLevel(logging.ERROR)
 logger5.setLevel(logging.ERROR)
 
-__version__ = '0.47.1'
+__version__ = '0.47.6'
