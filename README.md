@@ -1,10 +1,10 @@
-# Machine Room Management on my console
+## Machine Room Management on my console
 
 Locate and manage all my machines on my console.
 
 ## Why
 
-# mymachineroom - Automation Features for DevOps Workloads
+### mymachineroom - Automation Features for DevOps Workloads
 
 `mymachineroom` is designed to streamline DevOps workflows through automation, enabling efficient setup, configuration, and management of development and production environments. Below are the key automation features inferred from the repository's context and related projects by jjhesk.
 
