@@ -42,12 +42,29 @@ class ServerDoorJob(Infra1):
         any_one = random.choice(m)
 
     def action_add_custom_cert(self, name, pubkey_path):
+        """Add a custom certificate to servers and store the path."""
         def certification(c: Connection):
             if tb.detect_cert_signature(c, name) is False:
                 tb.copy_id(c, pubkey_path)
+                # Store custom cert metadata
                 self.srv.local().update_res_kv(f"custom_cert_{name}", True)
-
+                # Store the private key path (convert .pub to private key)
+                private_key_path = self._resolve_private_key_path(pubkey_path)
+                self.srv.local().set_local_cert_path(private_key_path)
+        
         self.run_conn(certification)
+
+    def _resolve_private_key_path(self, pubkey_path: str) -> str:
+        """
+        Convert public key path to private key path.
+        
+        Args:
+            pubkey_path: Path to public key (.pub file)
+        
+        Returns:
+            str: Path to corresponding private key
+        """
+        return pubkey_path.replace(".pub", "")
 
     def action_remove_custom_cert(self, name):
         def certification(c: Connection):
@@ -178,7 +195,8 @@ def internal_work():
         local.set_server_id(a)
         if local.has_this_server() is False:
             err_exit(f"there is no such server for ---> {a}")
-        cert = "/Users/hesdx/.ssh/id_rsa" if local.is_cert_installed() else ""
+        cert_info = local.get_cert_info()
+        cert = cert_info['path'] if cert_info['installed'] else ""
         (h, u, p) = local.get_info()
         port_sentence = "" if p == 22 else f"-p {p} "
         home_path = local.get_res_kv("home_path")
@@ -186,7 +204,10 @@ def internal_work():
         if local.get_tunnel_profile() != "":
             print("TUNNEL PROFILE: {local.get_tunnel_profile()}")
             use_macos_vpn_on(local.get_tunnel_profile())
-        os.system(f'ssh {port_sentence}-i {cert} -t {u}@{h} {home_path}')
+        
+        # Use custom SSH key if available, otherwise use default behavior
+        ssh_key_option = f"-i {cert}" if cert else ""
+        os.system(f'ssh {port_sentence}{ssh_key_option} -t {u}@{h} {home_path}')
     else:
         err_exit("cannot serv no args")
 

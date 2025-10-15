@@ -461,6 +461,13 @@ class Servers:
     def local(self):
         return self._local_db
 
+    def get_cert_path(self) -> str:
+        """
+        Get the certificate path for the current server.
+        Wrapper method for cleaner access.
+        """
+        return self._local_db.get_local_cert_path()
+
     @property
     def at_server(self) -> int:
         return self._srv_index
@@ -499,6 +506,13 @@ class Servers:
         self.current_pass = configuration.get("pass")
         self.current_srv_port = configuration.get("port")
         self._local_db.set_server_id(ID)
+        
+        # Handle SSH key path if specified
+        ssh_key_path = configuration.get("ssh_key_path")
+        if ssh_key_path:
+            # Store the SSH key path in the database metadata
+            self._local_db.set_local_cert_path(ssh_key_path)
+        
         if self._on_detect is False:
             print(f"## ☎️ Now enter network ID#{n}: {ID} {IP}")
         if self.has_tunnel():
@@ -515,16 +529,31 @@ class Servers:
 
 
 def reader_split_recognition(line: str) -> list:
-    if "----" in line:
-        line = line.split("----")
+    # Handle consecutive delimiters by normalizing them first
+    # Replace consecutive delimiters with single delimiter + empty field
+    import re
+    
+    # Normalize consecutive delimiters to avoid confusion
+    # ---- becomes --- + empty field + --- (no space)
+    line = re.sub(r'----', '--- ---', line)
+    line = re.sub(r'————', '———— ————', line)
+    line = re.sub(r'——', '—— ——', line)
+    
+    # Now split on the appropriate delimiter
+    # After normalization, we should only have the base delimiters
+    if "————" in line:
+        line = line.split("————")
+    elif "——" in line:
+        line = line.split("——")
     elif "---" in line:
         line = line.split("---")
     elif "--" in line:
         line = line.split("--")
-    elif "————" in line:
-        line = line.split("————")
-    elif "——" in line:
-        line = line.split("——")
+    
+    # Clean up any empty strings or spaces, and fix any remaining double dashes
+    line = [field.strip() for field in line]
+    line = [field.lstrip('-') if field.startswith('--') else field for field in line]
+    
     if isinstance(line, str):
         raise ServerAuthInfoErr()
 
@@ -540,15 +569,38 @@ def reader_profile_0(line: list) -> dict:
         "port": 22
     }
 
+    # Handle port field (4th field, index 4)
     try:
         port = line[4]
-        profile.update({
-            "port": port
-        })
+        # Check if this looks like a port number (numeric) or SSH key path (starts with /)
+        if port and port.strip() and not port.strip().startswith('/'):
+            profile.update({
+                "port": port
+            })
     except IndexError:
         ...
     except KeyError:
         ...
+
+    # Handle SSH key path field
+    # It could be in position 5 (if port is specified) or position 4 (if port is not specified)
+    ssh_key_path = None
+    try:
+        # First try position 5 (when port is specified)
+        ssh_key_path = line[5]
+    except IndexError:
+        try:
+            # If position 5 doesn't exist, try position 4 (when port is not specified)
+            potential_key = line[4]
+            if potential_key and potential_key.strip().startswith('/'):
+                ssh_key_path = potential_key
+        except IndexError:
+            pass
+    
+    if ssh_key_path and ssh_key_path.strip():  # Only set if not empty
+        profile.update({
+            "ssh_key_path": ssh_key_path.strip()
+        })
 
     return profile
 

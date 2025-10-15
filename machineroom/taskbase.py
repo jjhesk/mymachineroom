@@ -1,7 +1,6 @@
 import os.path
-
 import pexpect
-from fabric import Connection, Config as FabricConfig, Result
+from fabric import Config as FabricConfig, Result
 from machineroom.sql import ServerRoom
 from machineroom.tunnels import conn
 from machineroom.util import *
@@ -689,24 +688,42 @@ class DeploymentBotFoundation:
         return True
 
     def _est_connection(self) -> Connection:
+        # Get the custom SSH key path if specified
+        custom_ssh_key = self.srv.get_cert_path()
+        use_ssh_key = custom_ssh_key and custom_ssh_key != os.path.expanduser("~/.ssh/id_rsa")
+        
         if self.srv.has_this_server() is False:
-            return Connection(host=self.srv.current_host, port=22, user=self.srv.current_user, connect_kwargs={
-                "password": self.srv.current_pass,
-                # "key_filename": ['/Users/..../.ssh/id_rsa']
-            }, config=self._config())
+            # New server - use password or custom SSH key if specified
+            connect_kwargs = {"password": self.srv.current_pass}
+            if use_ssh_key:
+                connect_kwargs["key_filename"] = [custom_ssh_key]
+            return Connection(
+                host=self.srv.current_host,
+                port=22,
+                user=self.srv.current_user,
+                connect_kwargs=connect_kwargs,
+                config=self._config())
         elif self.srv.is_cert_installed() is False:
-            return Connection(host=self.srv.current_host, port=self.srv.current_srv_port, user=self.srv.current_user,
-                              connect_kwargs={
-                                  "password": self.srv.current_pass,
-                                  # "key_filename": ['/Users/..../.ssh/id_rsa']
-                              }, config=self._config())
+            # Server exists but no cert installed - use password or custom SSH key if specified
+            connect_kwargs = {"password": self.srv.current_pass}
+            if use_ssh_key:
+                connect_kwargs["key_filename"] = [custom_ssh_key]
+            return Connection(
+                host=self.srv.current_host,
+                port=self.srv.current_srv_port,
+                user=self.srv.current_user,
+                connect_kwargs=connect_kwargs, 
+                config=self._config())
         else:
+            # Cert is installed - use SSH key authentication
             print("cert is installed.")
-            return Connection(host=self.srv.current_host, port=self.srv.current_srv_port, user=self.srv.current_user,
-                              connect_kwargs={
-                                  # "password": self.srv.current_pass,
-                                  "key_filename": [Config.PUB_KEY]
-                              }, config=self._config())
+            return Connection(
+                host=self.srv.current_host,
+                port=self.srv.current_srv_port,
+                user=self.srv.current_user,
+                connect_kwargs={
+                    "key_filename": [custom_ssh_key]
+                }, config=self._config())
 
     def connection_err(self, item: Exception, on_err_exit: bool):
         print("======================== exit.")

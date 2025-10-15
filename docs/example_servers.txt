@@ -1,0 +1,34 @@
+# Example Server Configuration File
+# This file demonstrates the format for importing servers into MachineRoom
+#
+# Format: server_id--host--user--password--port--ssh_key_path
+# - server_id: Unique identifier for the server
+# - host: IP address or hostname
+# - user: SSH username
+# - password: SSH password (can be empty for SSH key auth)
+# - port: SSH port (optional, defaults to 22)
+# - ssh_key_path: Path to SSH private key file (optional, for key-based authentication)
+#
+# Tunnel configuration (optional, first line starting with #):
+# Format: #tunnel-profile-name--TUNNEL_TYPE--tunnel-server--username--password
+
+# Example tunnel configuration (uncomment and modify as needed)
+#prod-vpn--L2TP/IPSEC--vpn.company.com--vpnuser--vpnpass
+
+# Example servers (modify with your actual server details)
+web-server-01--192.168.1.100--root--password123--22
+web-server-02--192.168.1.101--root--password123--22
+db-server-01--192.168.1.200--postgres--dbpass--5432
+cache-server--192.168.1.210--redis--cachepass--6379
+api-server-01--10.0.0.50--ubuntu--mypassword
+monitoring--10.0.0.60--admin--monitorpass--2222
+
+# Example with custom SSH port
+backup-server--192.168.1.250--backup--backuppass--2222
+
+# Example with empty password (for SSH key authentication)
+key-auth-server--192.168.1.150--ubuntu----22
+
+# Example with SSH key authentication (your requested format)
+kansas-server--204.12.246.204--kliner------22--/Users/hesdx/.ssh/kansas_rsa
+prod-web--192.168.1.100--ubuntu------/Users/hesdx/.ssh/prod_key

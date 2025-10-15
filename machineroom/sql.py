@@ -294,6 +294,47 @@ class ServerRoom(ToolDb):
     def is_cert_installed(self):
         return self._is_what_installed("identity_cert_installed")
 
+    # ===== Certificate Path Management =====
+
+    def get_local_cert_path(self) -> str:
+        """
+        Get the local certificate path for this server.
+        Returns the custom cert path if set, otherwise returns default.
+        
+        Returns:
+            str: Path to the private key file (e.g., ~/.ssh/id_rsa)
+        """
+        path = self.get_res_kv("local_cert_path")
+        if path == "" or path is None:
+            # Default fallback for backward compatibility
+            return os.path.expanduser("~/.ssh/id_rsa")
+        return path
+
+    def set_local_cert_path(self, cert_path: str):
+        """
+        Set the local certificate path for this server.
+        
+        Args:
+            cert_path: Full path to the private key file
+        """
+        if cert_path:
+            # Expand user home directory if needed
+            expanded_path = os.path.expanduser(cert_path)
+            self.update_res_kv("local_cert_path", expanded_path)
+
+    def get_cert_info(self) -> dict:
+        """
+        Get comprehensive certificate information for this server.
+        
+        Returns:
+            dict: Contains 'installed', 'path', and 'is_default' keys
+        """
+        return {
+            'installed': self.is_cert_installed(),
+            'path': self.get_local_cert_path(),
+            'is_default': self.get_res_kv("local_cert_path") == ""
+        }
+
     def get_info(self):
         return self.get_host_info(self._tblembr, self.server_id)
 

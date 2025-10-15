@@ -63,8 +63,8 @@ CMD_RETIRE = ["retire", "retires", "retired"]
 CMD_OFF_CERT = ["off-cert", "takeoff", "stripcert", "takeout", "removecert", "certremove"]
 CMD_ADD_CERT = ["add-cert", "addingcert", "makecert", "cert-on", "on-cert", "customcert", "certificatessh",
                 "sshcertifcate"]
-CMD_GENERATE_PROFILE = ["generateprofile", "gen-profile", "watch-profile","watch_file","watchscan"]
-CMD_SET_BASH_START = ["sethome","startpath","loginstart","loginat"]
+CMD_GENERATE_PROFILE = ["generateprofile", "gen-profile", "watch-profile", "watch_file", "watchscan"]
+CMD_SET_BASH_START = ["sethome", "startpath", "loginstart", "loginat"]
 DETECT_PROCESS = 'ps aux | grep -sie "{COMMAND_NAME}" | grep -v "grep -sie"'
 HEALTH_CHK_DB = """docker run --rm -it --mount type=bind,source={PWD},destination=/data sstc/sqlite3 find . -maxdepth 1 -iname "*.db" -print0 -exec sqlite3 '{}' 'PRAGMA integrity_check;' ';'"""
 HEALTH_CHK_DB2 = """
@@ -184,8 +184,37 @@ if [ -f "$path_to_file" ]; then
         done
     echo "compress file success"
 fi"""
-DOCKER_COMPOSE_XCLASH = """
-version: '3.8'
+DOCKER_COMPOSE_MIHOMO = """version: '3.8'
+services:
+  proxy_service:
+    image: adriansteward/kernalcash
+    container_name: tunnel_kernal
+    ports:
+      - "17890:7890"
+      - "17891:7891"
+      - "19090:9090"
+      - "50000-51000:50000-51000/udp"
+    volumes:
+      - /opt/kernelcash/clash_conf:/root/.config/mihomo:ro
+      - /dev/net/tun:/dev/net/tun
+    restart: always
+    privileged: true
+    pid: octopus_dot
+    ipc: octopus_dot
+    # network_mode: host
+    cap_add:
+      - ALL
+    expose:
+      - 7890
+      - 7891
+      - 9090
+    networks:
+      - octopus_dot
+
+networks:
+  octopus_dot:
+"""
+DOCKER_COMPOSE_XCLASH = """version: '3.8'
 services:
   proxy_service:
     image: dreamacro/clash
@@ -193,6 +222,7 @@ services:
     ports:
       - "17890:17890"
       - "17891:17891"
+      - "19090:9090"
     volumes:
       - ./clash_conf/X_CLASH_CONFIG_YAML_NM:/root/.config/clash/config.yaml:ro
       - ./clash_conf:/root/.config/clash
@@ -204,7 +234,6 @@ services:
     expose:
       - 7890
       - 7891
-      - 17890
       - 9090
     networks:
       - octopus_dot
