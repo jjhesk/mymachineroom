@@ -15,7 +15,7 @@ server_id--host--user--password--port--ssh_key_path
 #tunnel-profile--L2TP/IPSEC--vpn.server.com--user--pass
 web-01--192.168.1.100--root--password123--22
 db-01--192.168.1.200--postgres--dbpass--5432
-kansas-server--204.12.246.204--kliner------22--/Users/hesdx/.ssh/kansas_rsa
+kansas-server--203.0.113.100--admin------22--/Users/yourusername/.ssh/custom_key
 ```
 
 ## Supported Delimiters

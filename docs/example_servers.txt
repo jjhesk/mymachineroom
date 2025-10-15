@@ -30,5 +30,5 @@ backup-server--192.168.1.250--backup--backuppass--2222
 key-auth-server--192.168.1.150--ubuntu----22
 
 # Example with SSH key authentication (your requested format)
-kansas-server--204.12.246.204--kliner------22--/Users/hesdx/.ssh/kansas_rsa
-prod-web--192.168.1.100--ubuntu------/Users/hesdx/.ssh/prod_key
+kansas-server--203.0.113.100--admin------22--/Users/yourusername/.ssh/custom_key
+prod-web--192.168.1.100--ubuntu------/Users/yourusername/.ssh/prod_key

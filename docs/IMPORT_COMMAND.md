@@ -72,8 +72,8 @@ web-server-01--192.168.1.100--root--password123--22
 db-server-01--192.168.1.101--admin--securepass--2222
 api-server-01--10.0.0.50--ubuntu--mypassword
 cache-server--10.0.0.60--redis--cachepass--6379
-kansas-server--204.12.246.204--kliner------22--/Users/hesdx/.ssh/kansas_rsa
-prod-web--192.168.1.100--ubuntu------/Users/hesdx/.ssh/prod_key
+kansas-server--203.0.113.100--admin------22--/Users/yourusername/.ssh/custom_key
+prod-web--192.168.1.100--ubuntu------/Users/yourusername/.ssh/prod_key
 ```
 
 ### Tunnel Configuration
@@ -312,9 +312,9 @@ web-02--192.168.1.101--root--password123--22
 # Custom SSH port
 web-03--192.168.1.102--admin--adminpass--2222
 # SSH key authentication with custom key
-kansas-server--204.12.246.204--kliner------22--/Users/hesdx/.ssh/kansas_rsa
+kansas-server--203.0.113.100--admin------22--/Users/yourusername/.ssh/custom_key
 # SSH key authentication with default port
-prod-web--192.168.1.100--ubuntu------/Users/hesdx/.ssh/prod_key
+prod-web--192.168.1.100--ubuntu------/Users/yourusername/.ssh/prod_key
 ```
 
 ## Error Handling
