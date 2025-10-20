@@ -466,6 +466,19 @@ class Servers:
         Get the certificate path for the current server.
         Wrapper method for cleaner access.
         """
+        # Ensure DB row exists. If missing, create with current auth data first.
+        if self.has_this_server() is False:
+            bootstrap = {
+                "id": self.current_id,
+                "host": self.current_host,
+                "user": self.current_user,
+                "pass": self.current_pass,
+                "port": self.current_srv_port,
+            }
+            if self.has_tunnel():
+                self._local_db.entrance_L2(self.profile_name, bootstrap)
+            else:
+                self._local_db.entrance_L1(bootstrap)
         return self._local_db.get_local_cert_path()
 
     @property
@@ -507,18 +520,26 @@ class Servers:
         self.current_srv_port = configuration.get("port")
         self._local_db.set_server_id(ID)
         
-        # Handle SSH key path if specified
-        ssh_key_path = configuration.get("ssh_key_path")
-        if ssh_key_path:
-            # Store the SSH key path in the database metadata
-            self._local_db.set_local_cert_path(ssh_key_path)
-        
+        # Ensure row exists BEFORE storing any extra metadata
+        # Only pass columns that exist in `server_room` schema
+        auth_data = {
+            "id": ID,
+            "host": IP,
+            "user": self.current_user,
+            "pass": self.current_pass,
+            "port": self.current_srv_port,
+        }
         if self._on_detect is False:
             print(f"## ☎️ Now enter network ID#{n}: {ID} {IP}")
         if self.has_tunnel():
-            self._local_db.entrance_L2(self.profile_name, configuration)
+            self._local_db.entrance_L2(self.profile_name, auth_data)
         else:
-            self._local_db.entrance_L1(configuration)
+            self._local_db.entrance_L1(auth_data)
+
+        # Handle SSH key path if specified (store in res JSON after row exists)
+        ssh_key_path = configuration.get("ssh_key_path")
+        if ssh_key_path:
+            self._local_db.set_local_cert_path(ssh_key_path)
 
     def has_tunnel(self) -> bool:
         return self._tunnel_type != TunnelType.NO_TUNNEL

@@ -133,16 +133,23 @@ class ToolDb(ManageDB):
 
     def get_member_res(self, tbl: str, server_id: str) -> dict:
         cursor = self.conn.cursor()
-        _da = {}
         try:
             cursor.execute(f'SELECT res FROM {tbl} WHERE id = ?', (server_id,))
-            (res_01,) = cursor.fetchone()
-            _da = json.loads(res_01)
+            row = cursor.fetchone()
+            if not row or row[0] in (None, ""):
+                return {}
+            return json.loads(row[0])
         except json.JSONDecodeError as e:
-            db_logger.error(e)
-        except Exception as E:
-            db_logger.warn('Data READ:', E)
-        return _da
+            db_logger.error("JSON decode error reading res for id %s: %s", server_id, e)
+            return {}
+        except Exception as e:
+            db_logger.warning("Data READ failed for id %s: %s", server_id, e)
+            return {}
+        finally:
+            try:
+                cursor.close()
+            except Exception:
+                pass
 
     def get_host_info(self, tbl: str, server_id: str) -> Tuple[str, str, int]:
         cursor = self.conn.cursor()

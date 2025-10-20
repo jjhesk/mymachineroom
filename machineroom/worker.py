@@ -108,7 +108,15 @@ def internal_work():
                 content.append(f"TUNNEL PROFILE: {tun}")
 
             content.append("EXPIRED" if local.is_what_installed_full("retire", id) else "")
-            content.append("CERT" if local.is_what_installed_full("identity_cert_installed", id) else "")
+            # CERT column displays whether default cert or custom cert is used when installed
+            if local.is_what_installed_full("identity_cert_installed", id):
+                cert_info = local.get_cert_info()
+                if cert_info.get("is_default"):
+                    content.append("CERT: default")
+                else:
+                    content.append(f"CERT: custom ({cert_info.get('path', '')})")
+            else:
+                content.append("")
             content.append("DOCKER" if local.is_what_installed_full("docker_compose_installed", id) else "")
             content.append("DAED" if local.is_what_installed_full("daed_installed", id) else "")
             content.append("YACHT" if local.is_what_installed_full("yacht_installed", id) else "")
